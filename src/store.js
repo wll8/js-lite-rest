@@ -1,61 +1,63 @@
 // js-store 主类实现
 
+function compose(middlewares, core, opt) {
+  return function (args) {
+    let index = -1;
+    function dispatch(i, _args) {
+      if (i <= index) return Promise.reject(new Error('next() called multiple times'));
+      index = i;
+      let fn = middlewares[i];
+      if (i === middlewares.length) fn = core;
+      if (!fn) return Promise.resolve();
+      try {
+        return Promise.resolve(fn(_args, (res) => dispatch(i + 1, _args), opt));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+    return dispatch(0, args);
+  };
+}
+
 export class Store {
   constructor(data, opt = {}) {
     this.opt = opt;
-    this.interceptor = opt.interceptor || {};
-    this.adapter = null;
-    // 适配器选择
-    if (opt.adapter) {
-      this.adapter = opt.adapter;
-    } else {
-      this.adapter = new JsonAdapter(data);
-    }
+    this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data);
+    this.middlewares = [];
   }
 
-  async get(path, query) {
-    if (this.interceptor.beforeGet) {
-      await this.interceptor.beforeGet(path, query);
-    }
-    const result = await this.adapter.get(path, query);
-    if (this.interceptor.afterGet) {
-      await this.interceptor.afterGet(path, query, result);
-    }
-    return result;
+  use(fn) {
+    this.middlewares.push(fn);
+    return this;
   }
 
-  // 预留 post/put/delete
-  async post(path, data) {
-    if (this.interceptor.beforePost) {
-      await this.interceptor.beforePost(path, data);
-    }
-    const result = await this.adapter.post(path, data);
-    if (this.interceptor.afterPost) {
-      await this.interceptor.afterPost(path, data, result);
-    }
-    return result;
+  async _request(method, ...args) {
+    const core = async (_args) => {
+      if (method === 'get') {
+        return await this.adapter.get(..._args);
+      } else if (method === 'post') {
+        return await this.adapter.post(..._args);
+      } else if (method === 'put') {
+        return await this.adapter.put(..._args);
+      } else if (method === 'delete') {
+        return await this.adapter.delete(..._args);
+      }
+    };
+    const fn = compose(this.middlewares, core, this.opt);
+    return fn(args);
   }
 
-  async put(path, data) {
-    if (this.interceptor.beforePut) {
-      await this.interceptor.beforePut(path, data);
-    }
-    const result = await this.adapter.put(path, data);
-    if (this.interceptor.afterPut) {
-      await this.interceptor.afterPut(path, data, result);
-    }
-    return result;
+  get(path, query) {
+    return this._request('get', path, query);
   }
-
-  async delete(path) {
-    if (this.interceptor.beforeDelete) {
-      await this.interceptor.beforeDelete(path);
-    }
-    const result = await this.adapter.delete(path);
-    if (this.interceptor.afterDelete) {
-      await this.interceptor.afterDelete(path, result);
-    }
-    return result;
+  post(path, data) {
+    return this._request('post', path, data);
+  }
+  put(path, data) {
+    return this._request('put', path, data);
+  }
+  delete(path) {
+    return this._request('delete', path);
   }
 }
 
