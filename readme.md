@@ -62,3 +62,10 @@ opt 配置选项。
 - pnpm 10
 - nodejs 20
 
+
+## 相似项目
+
+- [Dexie](https://github.com/dexie/Dexie.js) - 浏览器数据库
+- https://pouchdb.com/
+- https://jsstore.net/
+- https://github.com/google/lovefield

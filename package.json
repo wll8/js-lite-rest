@@ -1,0 +1,29 @@
+{
+  "name": "js-store",
+  "version": "0.1.0",
+  "description": "本地 JSON/文件/LocalStorage 轻量 RESTful 数据存储库，兼容 Node.js 和浏览器。",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "build": "rollup -c",
+    "test:build": "pnpm build && vitest run test/build.test.js"
+  },
+  "keywords": [
+    "json",
+    "store",
+    "localStorage",
+    "nodejs",
+    "restful"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.0.0",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "rollup": "^4.0.0",
+    "vitest": "^0.34.6"
+  }
+}
