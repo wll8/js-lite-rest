@@ -131,8 +131,8 @@ export class JsonAdapter {
       if (cur == null) return null;
     }
     if (query && typeof cur === 'object' && Array.isArray(cur)) {
-      // 分离分页参数、排序参数和过滤参数
-      const { _page, _limit, _sort, _order, ...filterQuery } = query;
+      // 分离分页参数、排序参数、截取参数和过滤参数
+      const { _page, _limit, _sort, _order, _start, _end, ...filterQuery } = query;
       
       // 先进行过滤
       let filteredData = cur;
@@ -202,8 +202,25 @@ export class JsonAdapter {
         });
       }
       
-      // 最后进行分页
-      if (_page || _limit) {
+      // 最后进行截取或分页
+      if (_start !== undefined || _end !== undefined) {
+        // 截取模式：_start 到 _end 或 _start 后面的 _limit 条
+        let start = _start !== undefined ? parseInt(_start) : 0;
+        const end = _end !== undefined ? parseInt(_end) : undefined;
+        
+        // 处理负数索引，确保 start 不为负数
+        if (start < 0) start = 0;
+        
+        if (_limit && _start !== undefined) {
+          // _start + _limit 模式
+          const limit = parseInt(_limit);
+          return filteredData.slice(start, start + limit);
+        } else {
+          // _start 到 _end 模式
+          return filteredData.slice(start, end);
+        }
+      } else if (_page || _limit) {
+        // 分页模式
         const page = parseInt(_page) || 1;
         const limit = parseInt(_limit) || 10;
         const start = (page - 1) * limit;

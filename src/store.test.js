@@ -284,6 +284,124 @@ export function testStoreBasic(Store) {
       expect(result[1].author.age).to.equal(30);
       expect(result[2].author.age).to.equal(35);
     });
+
+    it('get 截取功能 - start到end', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1' },
+          { id: 2, title: 'book2' },
+          { id: 3, title: 'book3' },
+          { id: 4, title: 'book4' },
+          { id: 5, title: 'book5' },
+          { id: 6, title: 'book6' },
+        ],
+      });
+      
+      // 截取第2到第5条（索引1到4）
+      const result = await store.get('book', { _start: 2, _end: 5 });
+      expect(result.length).to.equal(3);
+      expect(result[0].id).to.equal(3);
+      expect(result[1].id).to.equal(4);
+      expect(result[2].id).to.equal(5);
+    });
+
+    it('get 截取功能 - start加limit', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1' },
+          { id: 2, title: 'book2' },
+          { id: 3, title: 'book3' },
+          { id: 4, title: 'book4' },
+          { id: 5, title: 'book5' },
+          { id: 6, title: 'book6' },
+        ],
+      });
+      
+      // 从第20条开始，取10条（实际只有6条数据）
+      const result = await store.get('book', { _start: 20, _limit: 10 });
+      expect(result.length).to.equal(0);
+      
+      // 从第2条开始，取3条
+      const result2 = await store.get('book', { _start: 2, _limit: 3 });
+      expect(result2.length).to.equal(3);
+      expect(result2[0].id).to.equal(3);
+      expect(result2[1].id).to.equal(4);
+      expect(result2[2].id).to.equal(5);
+    });
+
+    it('get 截取与过滤结合', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'js', type: 'programming' },
+          { id: 2, title: 'css', type: 'design' },
+          { id: 3, title: 'html', type: 'design' },
+          { id: 4, title: 'python', type: 'programming' },
+          { id: 5, title: 'java', type: 'programming' },
+        ],
+      });
+      
+      // 先过滤再截取
+      const result = await store.get('book', { 
+        type: 'programming',
+        _start: 1, 
+        _end: 3 
+      });
+      
+      expect(result.length).to.equal(2);
+      expect(result[0].title).to.equal('python');
+      expect(result[1].title).to.equal('java');
+    });
+
+    it('get 截取与排序结合', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1', view: 100 },
+          { id: 2, title: 'book2', view: 200 },
+          { id: 3, title: 'book3', view: 50 },
+          { id: 4, title: 'book4', view: 150 },
+          { id: 5, title: 'book5', view: 300 },
+        ],
+      });
+      
+      // 先排序再截取
+      const result = await store.get('book', { 
+        _sort: 'view', 
+        _order: 'desc',
+        _start: 1, 
+        _end: 4 
+      });
+      
+      expect(result.length).to.equal(3);
+      expect(result[0].view).to.equal(200);
+      expect(result[1].view).to.equal(150);
+      expect(result[2].view).to.equal(100);
+    });
+
+    it('get 截取边界情况', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1' },
+          { id: 2, title: 'book2' },
+          { id: 3, title: 'book3' },
+        ],
+      });
+      
+      // 超出范围的截取
+      const result1 = await store.get('book', { _start: 10, _end: 15 });
+      expect(result1.length).to.equal(0);
+      
+      // 部分超出范围
+      const result2 = await store.get('book', { _start: 1, _end: 10 });
+      expect(result2.length).to.equal(2);
+      expect(result2[0].id).to.equal(2);
+      expect(result2[1].id).to.equal(3);
+      
+      // 负数索引（应该从0开始）
+      const result3 = await store.get('book', { _start: -1, _end: 2 });
+      expect(result3.length).to.equal(2);
+      expect(result3[0].id).to.equal(1);
+      expect(result3[1].id).to.equal(2);
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
