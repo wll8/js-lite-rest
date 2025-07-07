@@ -187,4 +187,20 @@ export class JsonAdapter {
     this.save();
     return del;
   }
+
+  patch(path, data) {
+    const segs = this.parsePath(path);
+    let cur = this.data;
+    for (let i = 0; i < segs.length - 1; i++) {
+      cur = cur[segs[i]];
+      if (cur == null) return null;
+    }
+    const key = segs[segs.length - 1];
+    if (!Array.isArray(cur)) throw new Error('只能对数组元素 patch');
+    const idx = cur.findIndex(item => String(item.id) === key);
+    if (idx === -1) return null;
+    cur[idx] = { ...cur[idx], ...data };
+    this.save();
+    return cur[idx];
+  }
 } 

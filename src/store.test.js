@@ -51,6 +51,23 @@ export function testStoreBasic(Store) {
       expect(books.length).to.equal(1);
       expect(books[0].id).to.equal(2);
     });
+
+    it('patch 部分更新', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', author: 'A' },
+          { id: 2, title: 'js', author: 'B' },
+        ],
+      });
+      // 只更新 title 字段
+      await store.patch('book/1', { title: 'css3' });
+      const book = await store.get('book/1');
+      expect(book).to.deep.equal({ id: 1, title: 'css3', author: 'A' });
+      // 只更新 author 字段
+      await store.patch('book/1', { author: 'C' });
+      const book2 = await store.get('book/1');
+      expect(book2).to.deep.equal({ id: 1, title: 'css3', author: 'C' });
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
