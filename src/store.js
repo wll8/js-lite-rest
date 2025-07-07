@@ -121,6 +121,15 @@ export class JsonAdapter {
 
   get(path, query) {
     const segs = this.parsePath(path);
+    // 嵌套资源 GET /posts/1/comments
+    if (segs.length === 3) {
+      const [parentTable, parentId, childTable] = segs;
+      if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
+        // 约定：子表有 parentTable.slice(0, -1) + 'Id' 字段
+        const parentIdKey = parentTable.slice(0, -1) + 'Id';
+        return this.data[childTable].filter(item => String(item[parentIdKey]) === parentId);
+      }
+    }
     let cur = this.data;
     for (let i = 0; i < segs.length; i++) {
       if (Array.isArray(cur) && !isNaN(Number(segs[i]))) {
@@ -264,6 +273,20 @@ export class JsonAdapter {
 
   post(path, data) {
     const segs = this.parsePath(path);
+    // 嵌套资源 POST /posts/1/comments
+    if (segs.length === 3) {
+      const [parentTable, parentId, childTable] = segs;
+      if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
+        const parentIdKey = parentTable.slice(0, -1) + 'Id';
+        const newData = { ...data, [parentIdKey]: isNaN(Number(parentId)) ? parentId : Number(parentId) };
+        // 自动分配 id
+        const arr = this.data[childTable];
+        newData.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+        arr.push(newData);
+        this.save();
+        return newData;
+      }
+    }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
       if (!cur[segs[i]]) cur[segs[i]] = {};
