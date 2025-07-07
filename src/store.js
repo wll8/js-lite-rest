@@ -131,29 +131,47 @@ export class JsonAdapter {
       if (cur == null) return null;
     }
     if (query && typeof cur === 'object' && Array.isArray(cur)) {
-      // 支持多值和点语法过滤，类型宽松比较
-      return cur.filter(item => {
-        return Object.keys(query).every(k => {
-          let value = query[k];
-          // 支持点语法
-          const getDeepValue = (obj, path) => {
-            return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
-          };
-          const itemValue = getDeepValue(item, k);
-          // 兼容 querystring 场景：如果 value 不是数组但实际是多个值，也转为数组
-          if (!Array.isArray(value) && typeof value !== 'undefined' && value !== null && typeof value !== 'object') {
-            // 处理 '1,2' 这种字符串
-            if (typeof value === 'string' && value.includes(',')) {
-              value = value.split(',');
+      // 分离分页参数和过滤参数
+      const { _page, _limit, ...filterQuery } = query;
+      
+      // 先进行过滤
+      let filteredData = cur;
+      if (Object.keys(filterQuery).length > 0) {
+        filteredData = cur.filter(item => {
+          return Object.keys(filterQuery).every(k => {
+            let value = filterQuery[k];
+            // 支持点语法
+            const getDeepValue = (obj, path) => {
+              return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+            };
+            const itemValue = getDeepValue(item, k);
+            // 兼容 querystring 场景：如果 value 不是数组但实际是多个值，也转为数组
+            if (!Array.isArray(value) && typeof value !== 'undefined' && value !== null && typeof value !== 'object') {
+              // 处理 '1,2' 这种字符串
+              if (typeof value === 'string' && value.includes(',')) {
+                value = value.split(',');
+              }
             }
-          }
-          if (Array.isArray(value)) {
-            return value.some(v => itemValue == v); // 宽松比较
-          } else {
-            return itemValue == value; // 宽松比较
-          }
+            if (Array.isArray(value)) {
+              return value.some(v => itemValue == v); // 宽松比较
+            } else {
+              return itemValue == value; // 宽松比较
+            }
+          });
         });
-      });
+      }
+      
+      // 再进行分页
+      if (_page || _limit) {
+        const page = parseInt(_page) || 1;
+        const limit = parseInt(_limit) || 10;
+        const start = (page - 1) * limit;
+        const end = start + limit;
+        
+        return filteredData.slice(start, end);
+      }
+      
+      return filteredData;
     }
     return cur;
   }

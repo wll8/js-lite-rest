@@ -107,6 +107,68 @@ export function testStoreBasic(Store) {
       expect(books.length).to.equal(1);
       expect(books[0].author.name).to.equal('张三');
     });
+
+    it('get 分页功能', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1' },
+          { id: 2, title: 'book2' },
+          { id: 3, title: 'book3' },
+          { id: 4, title: 'book4' },
+          { id: 5, title: 'book5' },
+          { id: 6, title: 'book6' },
+        ],
+      });
+      
+      // 测试默认分页（第1页，每页10条）
+      const page1 = await store.get('book', { _page: 1 });
+      expect(page1.length).to.equal(6);
+      expect(page1[0].id).to.equal(1);
+      
+      // 测试指定每页数量
+      const page1Limit2 = await store.get('book', { _page: 1, _limit: 2 });
+      expect(page1Limit2.length).to.equal(2);
+      expect(page1Limit2[0].id).to.equal(1);
+      expect(page1Limit2[1].id).to.equal(2);
+      
+      // 测试第2页
+      const page2Limit2 = await store.get('book', { _page: 2, _limit: 2 });
+      expect(page2Limit2.length).to.equal(2);
+      expect(page2Limit2[0].id).to.equal(3);
+      expect(page2Limit2[1].id).to.equal(4);
+      
+      // 测试第3页（最后一页）
+      const page3Limit2 = await store.get('book', { _page: 3, _limit: 2 });
+      expect(page3Limit2.length).to.equal(2);
+      expect(page3Limit2[0].id).to.equal(5);
+      expect(page3Limit2[1].id).to.equal(6);
+      
+      // 测试超出范围的页
+      const page4Limit2 = await store.get('book', { _page: 4, _limit: 2 });
+      expect(page4Limit2.length).to.equal(0);
+    });
+
+    it('get 分页与过滤结合', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'js', type: 'programming' },
+          { id: 2, title: 'css', type: 'design' },
+          { id: 3, title: 'html', type: 'design' },
+          { id: 4, title: 'python', type: 'programming' },
+          { id: 5, title: 'java', type: 'programming' },
+        ],
+      });
+      
+      // 先过滤再分页
+      const result = await store.get('book', { 
+        type: 'programming', 
+        _page: 1, 
+        _limit: 2 
+      });
+      expect(result.length).to.equal(2);
+      expect(result[0].title).to.equal('js');
+      expect(result[1].title).to.equal('python');
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
