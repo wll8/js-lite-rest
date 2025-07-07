@@ -24,6 +24,14 @@ export class Store {
     this.opt = opt;
     this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data);
     this.middlewares = [];
+    
+    // 定义支持的 HTTP 方法映射
+    this.methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+    
+    // 自动生成 HTTP 方法
+    this.methods.forEach(method => {
+      this[method] = (path, ...args) => this._request(method, path, ...args);
+    });
   }
 
   use(fn) {
@@ -31,34 +39,25 @@ export class Store {
     return this;
   }
 
-  async _request(method, ...args) {
+  async _request(method, path, ...args) {
     const core = async (_args) => {
       const [method, path, ...restArgs] = _args;
-      if (method === 'get') {
-        return await this.adapter.get(path, ...restArgs);
-      } else if (method === 'post') {
-        return await this.adapter.post(path, ...restArgs);
-      } else if (method === 'put') {
-        return await this.adapter.put(path, ...restArgs);
-      } else if (method === 'delete') {
-        return await this.adapter.delete(path, ...restArgs);
+      
+      // 检查方法是否支持
+      if (!this.methods.includes(method)) {
+        throw new Error(`不支持的 HTTP 方法: ${method}`);
+      }
+      
+      // 动态调用适配器方法
+      if (typeof this.adapter[method] === 'function') {
+        return await this.adapter[method](path, ...restArgs);
+      } else {
+        throw new Error(`适配器不支持 ${method} 方法`);
       }
     };
+    
     const fn = compose(this.middlewares, core, this.opt);
-    return fn([method, ...args]);
-  }
-
-  get(path, query) {
-    return this._request('get', path, query);
-  }
-  post(path, data) {
-    return this._request('post', path, data);
-  }
-  put(path, data) {
-    return this._request('put', path, data);
-  }
-  delete(path) {
-    return this._request('delete', path);
+    return fn([method, path, ...args]);
   }
 }
 
