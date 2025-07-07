@@ -273,6 +273,18 @@ export class JsonAdapter {
 
   post(path, data) {
     const segs = this.parsePath(path);
+    // 批量创建 /posts，body为数组
+    if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
+      const arr = this.data[segs[0]];
+      return data.map(item => {
+        if (item.id !== undefined) return null;
+        const newItem = { ...item };
+        newItem.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+        arr.push(newItem);
+        this.save();
+        return newItem;
+      });
+    }
     // 嵌套资源 POST /posts/1/comments
     if (segs.length === 3) {
       const [parentTable, parentId, childTable] = segs;
@@ -303,6 +315,18 @@ export class JsonAdapter {
 
   put(path, data) {
     const segs = this.parsePath(path);
+    // 批量全量修改 /posts，body为带id数组
+    if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
+      const arr = this.data[segs[0]];
+      return data.map(item => {
+        if (item.id === undefined) return null;
+        const idx = arr.findIndex(x => String(x.id) === String(item.id));
+        if (idx === -1) return null;
+        arr[idx] = { ...arr[idx], ...item };
+        this.save();
+        return arr[idx];
+      });
+    }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
       cur = cur[segs[i]];
@@ -317,8 +341,21 @@ export class JsonAdapter {
     return cur[idx];
   }
 
-  delete(path) {
+  delete(path, query) {
     const segs = this.parsePath(path);
+    // 批量删除 /posts?id=1&id=2
+    if (segs.length === 1 && query && query.id && this.data && Array.isArray(this.data[segs[0]])) {
+      const ids = Array.isArray(query.id) ? query.id : [query.id];
+      const arr = this.data[segs[0]];
+      const result = ids.map(id => {
+        const idx = arr.findIndex(item => String(item.id) === String(id));
+        if (idx === -1) return null;
+        const del = arr.splice(idx, 1)[0];
+        this.save();
+        return del;
+      });
+      return result;
+    }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
       cur = cur[segs[i]];
@@ -335,6 +372,18 @@ export class JsonAdapter {
 
   patch(path, data) {
     const segs = this.parsePath(path);
+    // 批量部分修改 /posts，body为带id数组
+    if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
+      const arr = this.data[segs[0]];
+      return data.map(item => {
+        if (item.id === undefined) return null;
+        const idx = arr.findIndex(x => String(x.id) === String(item.id));
+        if (idx === -1) return null;
+        arr[idx] = { ...arr[idx], ...item };
+        this.save();
+        return arr[idx];
+      });
+    }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
       cur = cur[segs[i]];

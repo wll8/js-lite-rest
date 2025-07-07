@@ -696,6 +696,83 @@ export function testStoreBasic(Store) {
       expect(comments.length).to.equal(2);
       expect(comments[1].content).to.equal('c2');
     });
+
+    it('delete /posts?id=1&id=2 批量删除', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'a' },
+          { id: 2, title: 'b' },
+          { id: 3, title: 'c' },
+        ],
+      });
+      const result = await store.delete('posts', { id: [1, 2] });
+      expect(result.length).to.equal(2);
+      expect(result[0].id).to.equal(1);
+      expect(result[1].id).to.equal(2);
+      const left = await store.get('posts');
+      expect(left.length).to.equal(1);
+      expect(left[0].id).to.equal(3);
+    });
+
+    it('post /posts 批量创建', async () => {
+      const store = new Store({ posts: [] });
+      const arr = [
+        { title: 'a' },
+        { title: 'b' },
+        { id: 99, title: 'should fail' },
+      ];
+      const result = await store.post('posts', arr);
+      expect(result.length).to.equal(3);
+      expect(result[0].id).to.equal(1);
+      expect(result[1].id).to.equal(2);
+      expect(result[2]).to.equal(null);
+      const all = await store.get('posts');
+      expect(all.length).to.equal(2);
+    });
+
+    it('put /posts 批量全量修改', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'a', view: 1 },
+          { id: 2, title: 'b', view: 2 },
+        ],
+      });
+      const arr = [
+        { id: 1, title: 'A', view: 10 },
+        { id: 2, title: 'B', view: 20 },
+        { title: 'fail' },
+      ];
+      const result = await store.put('posts', arr);
+      expect(result.length).to.equal(3);
+      expect(result[0].title).to.equal('A');
+      expect(result[1].view).to.equal(20);
+      expect(result[2]).to.equal(null);
+      const all = await store.get('posts');
+      expect(all[0].title).to.equal('A');
+      expect(all[1].title).to.equal('B');
+    });
+
+    it('patch /posts 批量部分修改', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'a', view: 1 },
+          { id: 2, title: 'b', view: 2 },
+        ],
+      });
+      const arr = [
+        { id: 1, view: 100 },
+        { id: 2, title: 'B' },
+        { title: 'fail' },
+      ];
+      const result = await store.patch('posts', arr);
+      expect(result.length).to.equal(3);
+      expect(result[0].view).to.equal(100);
+      expect(result[1].title).to.equal('B');
+      expect(result[2]).to.equal(null);
+      const all = await store.get('posts');
+      expect(all[0].view).to.equal(100);
+      expect(all[1].title).to.equal('B');
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
