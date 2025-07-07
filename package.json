@@ -8,7 +8,10 @@
   "scripts": {
     "test": "mocha",
     "build": "rollup -c",
-    "test:build": "pnpm build && mocha test/build.test.js"
+    "test:report": "mocha --reporter mochawesome",
+    "test:build": "pnpm build && mocha test/build.test.js",
+    "report:merge": "mochawesome-merge mochawesome-results/*.json > mochawesome-results/output.json",
+    "report:generate": "marge mochawesome-results/output.json -f report -o mochawesome-results"
   },
   "keywords": [
     "json",
@@ -20,13 +23,14 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@antfu/eslint-config": "^2.0.0",
-    "@rollup/plugin-commonjs": "^25.0.7",
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "chai": "^4.3.7",
-    "esm": "^3.2.25",
-    "mocha": "^10.2.0",
-    "rollup": "^4.0.0"
+    "@antfu/eslint-config": "^2.27.3",
+    "@rollup/plugin-commonjs": "^25.0.8",
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "chai": "^4.5.0",
+    "mocha": "^10.8.2",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.4.1",
+    "rollup": "^4.44.2"
   },
   "dependencies": {
     "chai-as-promised": "^8.0.1"

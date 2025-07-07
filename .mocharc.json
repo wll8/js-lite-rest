@@ -1,5 +1,9 @@
 {
   "extension": ["js"],
   "spec": ["src/**/*.test.js", "test/**/*.test.js"],
-  "require": "esm"
+  "reporter": "mochawesome",
+  "reporter-option": [
+    "reportDir=dist",
+    "reportFilename=mochawesome-results"
+  ]
 } 
