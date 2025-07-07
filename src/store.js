@@ -130,17 +130,19 @@ export class JsonAdapter {
       }
       if (cur == null) return null;
     }
-    if (query && typeof cur === 'object' && Array.isArray(cur)) {
-      // 分离分页参数、排序参数、截取参数和过滤参数
-      const { _page, _limit, _sort, _order, _start, _end, ...filterQuery } = query;
-      
-      // 先进行全文检索（仅 _q 参数）
+    if (query && typeof cur === 'object') {
+      // 分离参数
+      const { _page, _limit, _sort, _order, _start, _end, _embed, _expand, ...filterQuery } = query;
       let filteredData = cur;
+      let isSingleObject = false;
+      if (filteredData && !Array.isArray(filteredData)) {
+        filteredData = [filteredData];
+        isSingleObject = true;
+      }
+      // 全文检索
       if (typeof filterQuery._q === 'string' && filterQuery._q.length > 0) {
         const q = filterQuery._q.toLowerCase();
-        // 移除 _q 参数，避免后续普通过滤重复
         delete filterQuery._q;
-        // 递归遍历所有字段
         const matchAnyField = (obj) => {
           if (obj == null) return false;
           if (typeof obj === 'object') {
@@ -150,136 +152,111 @@ export class JsonAdapter {
         };
         filteredData = filteredData.filter(item => matchAnyField(item));
       }
-      
-      // 再进行过滤
+      // 过滤
       if (Object.keys(filterQuery).length > 0) {
         filteredData = filteredData.filter(item => {
           return Object.keys(filterQuery).every(k => {
             let value = filterQuery[k];
-            // 支持点语法
-            const getDeepValue = (obj, path) => {
-              return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
-            };
-            
-            // 解析字段名和操作符
+            const getDeepValue = (obj, path) => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
             const fieldMatch = k.match(/^(.+?)(_gte|_lte|_ne|_like)$/);
             const fieldName = fieldMatch ? fieldMatch[1] : k;
             const operator = fieldMatch ? fieldMatch[2] : null;
-            
             const itemValue = getDeepValue(item, fieldName);
-            
-            // 兼容 querystring 场景：如果 value 不是数组但实际是多个值，也转为数组
             if (!Array.isArray(value) && typeof value !== 'undefined' && value !== null && typeof value !== 'object') {
-              // 处理 '1,2' 这种字符串
-              if (typeof value === 'string' && value.includes(',')) {
-                value = value.split(',');
-              }
+              if (typeof value === 'string' && value.includes(',')) value = value.split(',');
             }
-            
-            // 根据操作符进行不同的比较
-            if (operator === '_gte') {
-              // 大于等于
-              return itemValue >= value;
-            } else if (operator === '_lte') {
-              // 小于等于
-              return itemValue <= value;
-            } else if (operator === '_ne') {
-              // 不等于
-              return itemValue != value;
-            } else if (operator === '_like') {
-              // 模糊匹配，支持正则
+            if (operator === '_gte') return itemValue >= value;
+            if (operator === '_lte') return itemValue <= value;
+            if (operator === '_ne') return itemValue != value;
+            if (operator === '_like') {
               if (typeof value === 'string' && value.includes('|')) {
-                // 多个模式，任一匹配即可
                 const patterns = value.split('|');
-                return patterns.some(pattern => {
-                  const regex = new RegExp(pattern, 'i');
-                  return regex.test(String(itemValue));
-                });
+                return patterns.some(pattern => new RegExp(pattern, 'i').test(String(itemValue)));
               } else {
-                // 单个模式
-                const regex = new RegExp(value, 'i');
-                return regex.test(String(itemValue));
-              }
-            } else {
-              // 默认相等比较
-              if (Array.isArray(value)) {
-                return value.some(v => itemValue == v); // 宽松比较
-              } else {
-                return itemValue == value; // 宽松比较
+                return new RegExp(value, 'i').test(String(itemValue));
               }
             }
+            if (Array.isArray(value)) return value.some(v => itemValue == v);
+            return itemValue == value;
           });
         });
       }
-      
-      // 再进行排序
-      if (_sort) {
-        const sortFields = Array.isArray(_sort) ? _sort : _sort.split(',');
-        const orderFields = _order ? (Array.isArray(_order) ? _order : _order.split(',')) : [];
-        
-        filteredData.sort((a, b) => {
-          for (let i = 0; i < sortFields.length; i++) {
-            const field = sortFields[i].trim();
-            const order = orderFields[i] ? orderFields[i].trim().toLowerCase() : 'asc';
-            
-            // 支持点语法获取深层字段
-            const getDeepValue = (obj, path) => {
-              return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
-            };
-            
-            const aValue = getDeepValue(a, field);
-            const bValue = getDeepValue(b, field);
-            
-            // 处理 null/undefined 值
-            if (aValue == null && bValue == null) continue;
-            if (aValue == null) return order === 'asc' ? -1 : 1;
-            if (bValue == null) return order === 'asc' ? 1 : -1;
-            
-            // 数值比较
-            if (typeof aValue === 'number' && typeof bValue === 'number') {
-              if (aValue !== bValue) {
-                return order === 'asc' ? aValue - bValue : bValue - aValue;
-              }
-            } else {
-              // 字符串比较
-              const aStr = String(aValue);
-              const bStr = String(bValue);
-              if (aStr !== bStr) {
-                return order === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      // _embed
+      if (_embed && this.data) {
+        const embedFields = Array.isArray(_embed) ? _embed : String(_embed).split(',');
+        for (const embedField of embedFields) {
+          const childArr = this.data[embedField];
+          if (!Array.isArray(childArr)) continue;
+          filteredData.forEach(item => {
+            if (!item) return;
+            const idKey = item.id;
+            item[embedField] = childArr.filter(child => child[`${segs[0].slice(0, -1)}Id`] == idKey);
+          });
+        }
+      }
+      // _expand
+      if (_expand && this.data) {
+        const expandFields = Array.isArray(_expand) ? _expand : String(_expand).split(',');
+        for (const expandField of expandFields) {
+          const parentArr = this.data[expandField + 's'];
+          if (!Array.isArray(parentArr)) continue;
+          filteredData.forEach(item => {
+            if (!item) return;
+            const parent = parentArr.find(parent => parent.id == item[`${expandField}Id`]);
+            if (parent) item[expandField] = parent;
+          });
+        }
+      }
+      // 只对数组做分页/排序/截取
+      if (!isSingleObject) {
+        // 排序
+        if (_sort) {
+          const sortFields = Array.isArray(_sort) ? _sort : _sort.split(',');
+          const orderFields = _order ? (Array.isArray(_order) ? _order : _order.split(',')) : [];
+          filteredData.sort((a, b) => {
+            for (let i = 0; i < sortFields.length; i++) {
+              const field = sortFields[i].trim();
+              const order = orderFields[i] ? orderFields[i].trim().toLowerCase() : 'asc';
+              const getDeepValue = (obj, path) => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+              const aValue = getDeepValue(a, field);
+              const bValue = getDeepValue(b, field);
+              if (aValue == null && bValue == null) continue;
+              if (aValue == null) return order === 'asc' ? -1 : 1;
+              if (bValue == null) return order === 'asc' ? 1 : -1;
+              if (typeof aValue === 'number' && typeof bValue === 'number') {
+                if (aValue !== bValue) return order === 'asc' ? aValue - bValue : bValue - aValue;
+              } else {
+                const aStr = String(aValue);
+                const bStr = String(bValue);
+                if (aStr !== bStr) return order === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
               }
             }
-          }
-          return 0;
-        });
-      }
-      
-      // 最后进行截取或分页
-      if (_start !== undefined || _end !== undefined) {
-        // 截取模式：_start 到 _end 或 _start 后面的 _limit 条
-        let start = _start !== undefined ? parseInt(_start) : 0;
-        const end = _end !== undefined ? parseInt(_end) : undefined;
-        
-        // 处理负数索引，确保 start 不为负数
-        if (start < 0) start = 0;
-        
-        if (_limit && _start !== undefined) {
-          // _start + _limit 模式
-          const limit = parseInt(_limit);
-          return filteredData.slice(start, start + limit);
-        } else {
-          // _start 到 _end 模式
-          return filteredData.slice(start, end);
+            return 0;
+          });
         }
-      } else if (_page || _limit) {
-        // 分页模式
-        const page = parseInt(_page) || 1;
-        const limit = parseInt(_limit) || 10;
-        const start = (page - 1) * limit;
-        const end = start + limit;
-        
-        return filteredData.slice(start, end);
+        // 截取
+        if (_start !== undefined || _end !== undefined) {
+          let start = _start !== undefined ? parseInt(_start) : 0;
+          const end = _end !== undefined ? parseInt(_end) : undefined;
+          if (start < 0) start = 0;
+          if (_limit && _start !== undefined) {
+            const limit = parseInt(_limit);
+            filteredData = filteredData.slice(start, start + limit);
+          } else {
+            filteredData = filteredData.slice(start, end);
+          }
+        } else if (_page || _limit) {
+          const page = parseInt(_page) || 1;
+          const limit = parseInt(_limit) || 10;
+          const start = (page - 1) * limit;
+          const end = start + limit;
+          filteredData = filteredData.slice(start, end);
+        }
       }
-      
+      // 还原单对象
+      if (isSingleObject) {
+        return filteredData[0];
+      }
       return filteredData;
     }
     return cur;

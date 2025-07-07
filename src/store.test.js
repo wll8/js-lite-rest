@@ -593,6 +593,71 @@ export function testStoreBasic(Store) {
       expect(result.length).to.equal(2);
       expect(result.map(b => b.id)).to.include(1).and.include(4);
     });
+
+    it('get posts?_embed=comments', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'post1' },
+          { id: 2, title: 'post2' },
+        ],
+        comments: [
+          { id: 1, postId: 1, content: 'c1' },
+          { id: 2, postId: 1, content: 'c2' },
+          { id: 3, postId: 2, content: 'c3' },
+        ],
+      });
+      const result = await store.get('posts', { _embed: 'comments' });
+      expect(result.length).to.equal(2);
+      expect(result[0].comments.length).to.equal(2);
+      expect(result[1].comments.length).to.equal(1);
+      expect(result[0].comments[0].content).to.equal('c1');
+      expect(result[1].comments[0].content).to.equal('c3');
+    });
+
+    it('get posts/1?_embed=comments', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'post1' },
+        ],
+        comments: [
+          { id: 1, postId: 1, content: 'c1' },
+          { id: 2, postId: 1, content: 'c2' },
+        ],
+      });
+      const result = await store.get('posts/1', { _embed: 'comments' });
+      expect(result.comments.length).to.equal(2);
+      expect(result.comments[0].content).to.equal('c1');
+    });
+
+    it('get comments?_expand=post', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'post1' },
+          { id: 2, title: 'post2' },
+        ],
+        comments: [
+          { id: 1, postId: 1, content: 'c1' },
+          { id: 2, postId: 2, content: 'c2' },
+        ],
+      });
+      const result = await store.get('comments', { _expand: 'post' });
+      expect(result.length).to.equal(2);
+      expect(result[0].post.title).to.equal('post1');
+      expect(result[1].post.title).to.equal('post2');
+    });
+
+    it('get comments/1?_expand=post', async () => {
+      const store = new Store({
+        posts: [
+          { id: 1, title: 'post1' },
+        ],
+        comments: [
+          { id: 1, postId: 1, content: 'c1' },
+        ],
+      });
+      const result = await store.get('comments/1', { _expand: 'post' });
+      expect(result.post.title).to.equal('post1');
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
