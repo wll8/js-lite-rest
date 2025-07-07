@@ -124,7 +124,6 @@ export class JsonAdapter {
     let cur = this.data;
     for (let i = 0; i < segs.length; i++) {
       if (Array.isArray(cur) && !isNaN(Number(segs[i]))) {
-        // 如果当前是数组，且 segs[i] 是数字，则查找 id
         cur = cur.find(item => String(item.id) === segs[i]);
       } else {
         cur = cur[segs[i]];
@@ -132,9 +131,28 @@ export class JsonAdapter {
       if (cur == null) return null;
     }
     if (query && typeof cur === 'object' && Array.isArray(cur)) {
-      // 简单过滤
+      // 支持多值和点语法过滤，类型宽松比较
       return cur.filter(item => {
-        return Object.keys(query).every(k => item[k] === query[k]);
+        return Object.keys(query).every(k => {
+          let value = query[k];
+          // 支持点语法
+          const getDeepValue = (obj, path) => {
+            return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+          };
+          const itemValue = getDeepValue(item, k);
+          // 兼容 querystring 场景：如果 value 不是数组但实际是多个值，也转为数组
+          if (!Array.isArray(value) && typeof value !== 'undefined' && value !== null && typeof value !== 'object') {
+            // 处理 '1,2' 这种字符串
+            if (typeof value === 'string' && value.includes(',')) {
+              value = value.split(',');
+            }
+          }
+          if (Array.isArray(value)) {
+            return value.some(v => itemValue == v); // 宽松比较
+          } else {
+            return itemValue == value; // 宽松比较
+          }
+        });
       });
     }
     return cur;

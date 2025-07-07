@@ -68,6 +68,45 @@ export function testStoreBasic(Store) {
       const book2 = await store.get('book/1');
       expect(book2).to.deep.equal({ id: 1, title: 'css3', author: 'C' });
     });
+
+    it('get 多字段过滤', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', type: 'js', discount: 1 },
+          { id: 2, title: 'js', type: 'js', discount: 0 },
+          { id: 3, title: 'html', type: 'html', discount: 1 },
+        ],
+      });
+      const books = await store.get('book', { discount: 1, type: 'js' });
+      expect(books.length).to.equal(1);
+      expect(books[0].id).to.equal(1);
+    });
+
+    it('get 同字段多值过滤', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' },
+          { id: 3, title: 'html' },
+        ],
+      });
+      // 模拟 id=1&id=2 这种情况
+      const books = await store.get('book', { id: [1, 2] });
+      expect(books.length).to.equal(2);
+      expect(books.map(b => b.id)).to.include(1).and.include(2);
+    });
+
+    it('get 点语法深层字段过滤', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', author: { name: '张三' } },
+          { id: 2, title: 'js', author: { name: '李四' } },
+        ],
+      });
+      const books = await store.get('book', { 'author.name': '张三' });
+      expect(books.length).to.equal(1);
+      expect(books[0].author.name).to.equal('张三');
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;
