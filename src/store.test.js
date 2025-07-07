@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Store } from './store';
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+import { Store } from './store.js';
 
 export function testStoreBasic(Store) {
   describe('Store 基础功能', () => {
@@ -15,38 +18,38 @@ export function testStoreBasic(Store) {
 
     it('get 列表', async () => {
       const books = await store.get('book');
-      expect(books.length).toBe(2);
+      expect(books.length).to.equal(2);
     });
 
     it('get 详情', async () => {
       const book = await store.get('book/1');
-      expect(book).toEqual({ id: 1, title: 'css' });
+      expect(book).to.deep.equal({ id: 1, title: 'css' });
     });
 
     it('get 查询', async () => {
       const books = await store.get('book', { title: 'css' });
-      expect(books.length).toBe(1);
-      expect(books[0].title).toBe('css');
+      expect(books.length).to.equal(1);
+      expect(books[0].title).to.equal('css');
     });
 
     it('post 新增', async () => {
       await store.post('book', { title: 'html' });
       const books = await store.get('book');
-      expect(books.length).toBe(3);
-      expect(books[2].title).toBe('html');
+      expect(books.length).to.equal(3);
+      expect(books[2].title).to.equal('html');
     });
 
     it('put 更新', async () => {
       await store.put('book/1', { title: 'css3' });
       const books = await store.get('book');
-      expect(books[0].title).toBe('css3');
+      expect(books[0].title).to.equal('css3');
     });
 
     it('delete 删除', async () => {
       await store.delete('book/1');
       const books = await store.get('book');
-      expect(books.length).toBe(1);
-      expect(books[0].id).toBe(2);
+      expect(books.length).to.equal(1);
+      expect(books[0].id).to.equal(2);
     });
   });
   describe('Store 拦截器功能', () => {
@@ -77,11 +80,11 @@ export function testStoreBasic(Store) {
 
       const books = await store.get('book');
       
-      expect(requestLog).toHaveLength(2);
-      expect(requestLog[0].type).toBe('before');
-      expect(requestLog[1].type).toBe('after');
-      expect(books.length).toBe(1);
-      expect(books[0].title).toBe('css');
+      expect(requestLog).to.have.length(2);
+      expect(requestLog[0].type).to.equal('before');
+      expect(requestLog[1].type).to.equal('after');
+      expect(books.length).to.equal(1);
+      expect(books[0].title).to.equal('css');
     });
 
     it('后置拦截器 - 修改响应数据', async () => {
@@ -96,9 +99,9 @@ export function testStoreBasic(Store) {
 
       const books = await store.get('book');
       
-      expect(books.length).toBe(2);
-      expect(books[0]).toHaveProperty('timestamp');
-      expect(books[1]).toHaveProperty('timestamp');
+      expect(books.length).to.equal(2);
+      expect(books[0]).to.have.property('timestamp');
+      expect(books[1]).to.have.property('timestamp');
     });
 
     it('多个拦截器 - 链式处理与数据传递', async () => {
@@ -121,11 +124,11 @@ export function testStoreBasic(Store) {
       });
 
       const books = await store.get('book');
-      expect(books.length).toBe(2);
-      expect(books[0]).toHaveProperty('tag1', true);
-      expect(books[0]).toHaveProperty('tag2', true);
-      expect(books[1]).toHaveProperty('tag1', true);
-      expect(books[1]).toHaveProperty('tag2', true);
+      expect(books.length).to.equal(2);
+      expect(books[0]).to.have.property('tag1', true);
+      expect(books[0]).to.have.property('tag2', true);
+      expect(books[1]).to.have.property('tag1', true);
+      expect(books[1]).to.have.property('tag2', true);
     });
 
     it('拦截器中断链后，后续拦截器不会执行', async () => {
@@ -142,8 +145,8 @@ export function testStoreBasic(Store) {
       });
 
       const books = await store.get('book');
-      expect(books).toEqual([{ id: 999, title: 'fake' }]);
-      expect(secondCalled).toBe(false);
+      expect(books).to.deep.equal([{ id: 999, title: 'fake' }]);
+      expect(secondCalled).to.equal(false);
     });
 
     it('拦截器错误处理', async () => {
@@ -169,8 +172,8 @@ export function testStoreBasic(Store) {
       try {
         await store.get('book');
       } catch (error) {
-        expect(error.message).toBe('模拟拦截器错误');
-        expect(errorCaught).toBe(true);
+        expect(error.message).to.equal('模拟拦截器错误');
+        expect(errorCaught).to.equal(true);
       }
     });
 
@@ -185,12 +188,12 @@ export function testStoreBasic(Store) {
 
       const result = await store.delete('book/1');
       
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe('删除操作被拦截');
+      expect(result.blocked).to.equal(true);
+      expect(result.message).to.equal('删除操作被拦截');
       
       // 验证数据没有被删除
       const books = await store.get('book');
-      expect(books.length).toBe(2);
+      expect(books.length).to.equal(2);
     });
 
     it('拦截器修改 POST 数据', async () => {
@@ -205,11 +208,11 @@ export function testStoreBasic(Store) {
       const newBook = { title: 'vue' };
       const result = await store.post('book', newBook);
       
-      expect(result).toHaveProperty('createdAt');
-      expect(result.title).toBe('vue');
+      expect(result).to.have.property('createdAt');
+      expect(result.title).to.equal('vue');
       
       const books = await store.get('book');
-      expect(books.length).toBe(3);
+      expect(books.length).to.equal(3);
     });
 
     it('拦截器验证数据', async () => {
@@ -225,11 +228,11 @@ export function testStoreBasic(Store) {
 
       // 测试有效数据
       const validBook = { title: 'react' };
-      await expect(store.post('book', validBook)).resolves.toBeDefined();
+      await expect(store.post('book', validBook)).to.be.fulfilled;
 
       // 测试无效数据
       const invalidBook = { title: 'a' };
-      await expect(store.post('book', invalidBook)).rejects.toThrow('标题长度必须大于2个字符');
+      await expect(store.post('book', invalidBook)).to.be.rejectedWith('标题长度必须大于2个字符');
     });
 
     it('拦截器添加认证信息', async () => {
@@ -242,7 +245,7 @@ export function testStoreBasic(Store) {
 
       store.use(async (args, next, opt) => {
         // 验证认证信息
-        expect(opt.headers['Authorization']).toBe('Bearer token123');
+        expect(opt.headers['Authorization']).to.equal('Bearer token123');
         return await next(args);
       });
 
@@ -270,16 +273,16 @@ export function testStoreBasic(Store) {
 
       // 第一次请求
       const books1 = await store.get('book');
-      expect(books1.length).toBe(2);
+      expect(books1.length).to.equal(2);
       
       // 第二次请求应该从缓存返回
       const books2 = await store.get('book');
-      expect(books2).toBe(books1); // 应该是同一个引用
+      expect(books2).to.equal(books1); // 应该是同一个引用
       
       // 修改数据后缓存应该失效
       await store.post('book', { title: 'angular' });
       const books3 = await store.get('book');
-      expect(books3.length).toBe(3);
+      expect(books3.length).to.equal(3);
     });
   });
 }

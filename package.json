@@ -6,9 +6,9 @@
   "types": "src/index.d.ts",
   "type": "module",
   "scripts": {
-    "test": "vitest",
+    "test": "mocha",
     "build": "rollup -c",
-    "test:build": "pnpm build && vitest run test/build.test.js"
+    "test:build": "pnpm build && mocha test/build.test.js"
   },
   "keywords": [
     "json",
@@ -23,8 +23,12 @@
     "@antfu/eslint-config": "^2.0.0",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@vitest/ui": "^3.2.4",
-    "rollup": "^4.0.0",
-    "vitest": "^3.2.4"
+    "chai": "^4.3.7",
+    "esm": "^3.2.25",
+    "mocha": "^10.2.0",
+    "rollup": "^4.0.0"
+  },
+  "dependencies": {
+    "chai-as-promised": "^8.0.1"
   }
 }
