@@ -33,18 +33,19 @@ export class Store {
 
   async _request(method, ...args) {
     const core = async (_args) => {
+      const [method, path, ...restArgs] = _args;
       if (method === 'get') {
-        return await this.adapter.get(..._args);
+        return await this.adapter.get(path, ...restArgs);
       } else if (method === 'post') {
-        return await this.adapter.post(..._args);
+        return await this.adapter.post(path, ...restArgs);
       } else if (method === 'put') {
-        return await this.adapter.put(..._args);
+        return await this.adapter.put(path, ...restArgs);
       } else if (method === 'delete') {
-        return await this.adapter.delete(..._args);
+        return await this.adapter.delete(path, ...restArgs);
       }
     };
     const fn = compose(this.middlewares, core, this.opt);
-    return fn(args);
+    return fn([method, ...args]);
   }
 
   get(path, query) {
