@@ -144,7 +144,14 @@ export class JsonAdapter {
             const getDeepValue = (obj, path) => {
               return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
             };
-            const itemValue = getDeepValue(item, k);
+            
+            // 解析字段名和操作符
+            const fieldMatch = k.match(/^(.+?)(_gte|_lte|_ne|_like)$/);
+            const fieldName = fieldMatch ? fieldMatch[1] : k;
+            const operator = fieldMatch ? fieldMatch[2] : null;
+            
+            const itemValue = getDeepValue(item, fieldName);
+            
             // 兼容 querystring 场景：如果 value 不是数组但实际是多个值，也转为数组
             if (!Array.isArray(value) && typeof value !== 'undefined' && value !== null && typeof value !== 'object') {
               // 处理 '1,2' 这种字符串
@@ -152,10 +159,38 @@ export class JsonAdapter {
                 value = value.split(',');
               }
             }
-            if (Array.isArray(value)) {
-              return value.some(v => itemValue == v); // 宽松比较
+            
+            // 根据操作符进行不同的比较
+            if (operator === '_gte') {
+              // 大于等于
+              return itemValue >= value;
+            } else if (operator === '_lte') {
+              // 小于等于
+              return itemValue <= value;
+            } else if (operator === '_ne') {
+              // 不等于
+              return itemValue != value;
+            } else if (operator === '_like') {
+              // 模糊匹配，支持正则
+              if (typeof value === 'string' && value.includes('|')) {
+                // 多个模式，任一匹配即可
+                const patterns = value.split('|');
+                return patterns.some(pattern => {
+                  const regex = new RegExp(pattern, 'i');
+                  return regex.test(String(itemValue));
+                });
+              } else {
+                // 单个模式
+                const regex = new RegExp(value, 'i');
+                return regex.test(String(itemValue));
+              }
             } else {
-              return itemValue == value; // 宽松比较
+              // 默认相等比较
+              if (Array.isArray(value)) {
+                return value.some(v => itemValue == v); // 宽松比较
+              } else {
+                return itemValue == value; // 宽松比较
+              }
             }
           });
         });
