@@ -169,6 +169,121 @@ export function testStoreBasic(Store) {
       expect(result[0].title).to.equal('js');
       expect(result[1].title).to.equal('python');
     });
+
+    it('get 单字段排序', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', view: 100 },
+          { id: 2, title: 'js', view: 200 },
+          { id: 3, title: 'html', view: 50 },
+        ],
+      });
+      
+      // 升序排序
+      const ascResult = await store.get('book', { _sort: 'view', _order: 'asc' });
+      expect(ascResult[0].view).to.equal(50);
+      expect(ascResult[1].view).to.equal(100);
+      expect(ascResult[2].view).to.equal(200);
+      
+      // 降序排序
+      const descResult = await store.get('book', { _sort: 'view', _order: 'desc' });
+      expect(descResult[0].view).to.equal(200);
+      expect(descResult[1].view).to.equal(100);
+      expect(descResult[2].view).to.equal(50);
+    });
+
+    it('get 多字段排序', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', user: 'A', view: 100 },
+          { id: 2, title: 'js', user: 'A', view: 200 },
+          { id: 3, title: 'html', user: 'B', view: 50 },
+          { id: 4, title: 'vue', user: 'B', view: 150 },
+        ],
+      });
+      
+      // 多字段排序：user降序，view升序
+      const result = await store.get('book', { 
+        _sort: 'user,view', 
+        _order: 'desc,asc' 
+      });
+      
+      // 期望结果：B用户在前（降序），然后按view升序
+      expect(result[0].user).to.equal('B');
+      expect(result[0].view).to.equal(50);
+      expect(result[1].user).to.equal('B');
+      expect(result[1].view).to.equal(150);
+      expect(result[2].user).to.equal('A');
+      expect(result[2].view).to.equal(100);
+      expect(result[3].user).to.equal('A');
+      expect(result[3].view).to.equal(200);
+    });
+
+    it('get 排序与过滤结合', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'js', type: 'programming', view: 100 },
+          { id: 2, title: 'css', type: 'design', view: 200 },
+          { id: 3, title: 'html', type: 'design', view: 50 },
+          { id: 4, title: 'python', type: 'programming', view: 150 },
+        ],
+      });
+      
+      // 先过滤再排序
+      const result = await store.get('book', { 
+        type: 'design',
+        _sort: 'view', 
+        _order: 'asc' 
+      });
+      
+      expect(result.length).to.equal(2);
+      expect(result[0].view).to.equal(50);
+      expect(result[1].view).to.equal(200);
+    });
+
+    it('get 排序与分页结合', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'book1', view: 100 },
+          { id: 2, title: 'book2', view: 200 },
+          { id: 3, title: 'book3', view: 50 },
+          { id: 4, title: 'book4', view: 150 },
+          { id: 5, title: 'book5', view: 300 },
+        ],
+      });
+      
+      // 先排序再分页
+      const result = await store.get('book', { 
+        _sort: 'view', 
+        _order: 'desc',
+        _page: 1, 
+        _limit: 2 
+      });
+      
+      expect(result.length).to.equal(2);
+      expect(result[0].view).to.equal(300);
+      expect(result[1].view).to.equal(200);
+    });
+
+    it('get 深层字段排序', async () => {
+      const store = new Store({
+        book: [
+          { id: 1, title: 'css', author: { name: '张三', age: 30 } },
+          { id: 2, title: 'js', author: { name: '李四', age: 25 } },
+          { id: 3, title: 'html', author: { name: '王五', age: 35 } },
+        ],
+      });
+      
+      // 按作者年龄排序
+      const result = await store.get('book', { 
+        _sort: 'author.age', 
+        _order: 'asc' 
+      });
+      
+      expect(result[0].author.age).to.equal(25);
+      expect(result[1].author.age).to.equal(30);
+      expect(result[2].author.age).to.equal(35);
+    });
   });
   describe('Store 拦截器功能', () => {
     let store;

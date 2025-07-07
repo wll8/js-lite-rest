@@ -131,8 +131,8 @@ export class JsonAdapter {
       if (cur == null) return null;
     }
     if (query && typeof cur === 'object' && Array.isArray(cur)) {
-      // 分离分页参数和过滤参数
-      const { _page, _limit, ...filterQuery } = query;
+      // 分离分页参数、排序参数和过滤参数
+      const { _page, _limit, _sort, _order, ...filterQuery } = query;
       
       // 先进行过滤
       let filteredData = cur;
@@ -161,7 +161,48 @@ export class JsonAdapter {
         });
       }
       
-      // 再进行分页
+      // 再进行排序
+      if (_sort) {
+        const sortFields = Array.isArray(_sort) ? _sort : _sort.split(',');
+        const orderFields = _order ? (Array.isArray(_order) ? _order : _order.split(',')) : [];
+        
+        filteredData.sort((a, b) => {
+          for (let i = 0; i < sortFields.length; i++) {
+            const field = sortFields[i].trim();
+            const order = orderFields[i] ? orderFields[i].trim().toLowerCase() : 'asc';
+            
+            // 支持点语法获取深层字段
+            const getDeepValue = (obj, path) => {
+              return path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+            };
+            
+            const aValue = getDeepValue(a, field);
+            const bValue = getDeepValue(b, field);
+            
+            // 处理 null/undefined 值
+            if (aValue == null && bValue == null) continue;
+            if (aValue == null) return order === 'asc' ? -1 : 1;
+            if (bValue == null) return order === 'asc' ? 1 : -1;
+            
+            // 数值比较
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+              if (aValue !== bValue) {
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+              }
+            } else {
+              // 字符串比较
+              const aStr = String(aValue);
+              const bStr = String(bValue);
+              if (aStr !== bStr) {
+                return order === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+              }
+            }
+          }
+          return 0;
+        });
+      }
+      
+      // 最后进行分页
       if (_page || _limit) {
         const page = parseInt(_page) || 1;
         const limit = parseInt(_limit) || 10;
