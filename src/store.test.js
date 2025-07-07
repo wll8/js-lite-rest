@@ -550,7 +550,7 @@ export function testStoreBasic(Store) {
       expect(result[1].author.name).to.equal('王五');
     });
 
-    it('get 全文检索 q参数', async () => {
+    it('get 全文检索 _q参数', async () => {
       const store = new Store({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
@@ -559,27 +559,27 @@ export function testStoreBasic(Store) {
         ],
       });
       // 检索作者
-      const result1 = await store.get('book', { q: '张三' });
+      const result1 = await store.get('book', { _q: '张三' });
       expect(result1.length).to.equal(1);
       expect(result1[0].author.name).to.equal('张三');
       // 检索描述
-      const result2 = await store.get('book', { q: '设计' });
+      const result2 = await store.get('book', { _q: '设计' });
       expect(result2.length).to.equal(1);
       expect(result2[0].desc).to.equal('设计');
       // 检索不存在的内容
-      const result3 = await store.get('book', { q: '不存在' });
+      const result3 = await store.get('book', { _q: '不存在' });
       expect(result3.length).to.equal(0);
       // 检索嵌套字段
-      const result4 = await store.get('book', { q: '王五' });
+      const result4 = await store.get('book', { _q: '王五' });
       expect(result4.length).to.equal(1);
       expect(result4[0].author.name).to.equal('王五');
       // 检索英文（不区分大小写）
-      const result5 = await store.get('book', { q: 'HTML' });
+      const result5 = await store.get('book', { _q: 'HTML' });
       expect(result5.length).to.equal(1);
       expect(result5[0].title).to.equal('html');
     });
 
-    it('get 全文检索 q参数 - 命中多条', async () => {
+    it('get 全文检索 _q参数 - 命中多条', async () => {
       const store = new Store({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
@@ -589,7 +589,7 @@ export function testStoreBasic(Store) {
         ],
       });
       // 检索 'js'，应命中 id=1 和 id=4
-      const result = await store.get('book', { q: 'js' });
+      const result = await store.get('book', { _q: 'js' });
       expect(result.length).to.equal(2);
       expect(result.map(b => b.id)).to.include(1).and.include(4);
     });

@@ -134,12 +134,12 @@ export class JsonAdapter {
       // 分离分页参数、排序参数、截取参数和过滤参数
       const { _page, _limit, _sort, _order, _start, _end, ...filterQuery } = query;
       
-      // 先进行全文检索（q参数）
+      // 先进行全文检索（仅 _q 参数）
       let filteredData = cur;
-      if (typeof filterQuery.q === 'string' && filterQuery.q.length > 0) {
-        const q = filterQuery.q.toLowerCase();
-        // 移除q参数，避免后续普通过滤重复
-        delete filterQuery.q;
+      if (typeof filterQuery._q === 'string' && filterQuery._q.length > 0) {
+        const q = filterQuery._q.toLowerCase();
+        // 移除 _q 参数，避免后续普通过滤重复
+        delete filterQuery._q;
         // 递归遍历所有字段
         const matchAnyField = (obj) => {
           if (obj == null) return false;
