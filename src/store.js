@@ -134,10 +134,26 @@ export class JsonAdapter {
       // 分离分页参数、排序参数、截取参数和过滤参数
       const { _page, _limit, _sort, _order, _start, _end, ...filterQuery } = query;
       
-      // 先进行过滤
+      // 先进行全文检索（q参数）
       let filteredData = cur;
+      if (typeof filterQuery.q === 'string' && filterQuery.q.length > 0) {
+        const q = filterQuery.q.toLowerCase();
+        // 移除q参数，避免后续普通过滤重复
+        delete filterQuery.q;
+        // 递归遍历所有字段
+        const matchAnyField = (obj) => {
+          if (obj == null) return false;
+          if (typeof obj === 'object') {
+            return Object.values(obj).some(v => matchAnyField(v));
+          }
+          return String(obj).toLowerCase().includes(q);
+        };
+        filteredData = filteredData.filter(item => matchAnyField(item));
+      }
+      
+      // 再进行过滤
       if (Object.keys(filterQuery).length > 0) {
-        filteredData = cur.filter(item => {
+        filteredData = filteredData.filter(item => {
           return Object.keys(filterQuery).every(k => {
             let value = filterQuery[k];
             // 支持点语法
