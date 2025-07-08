@@ -477,9 +477,9 @@ export function testMain(Store) {
           { id: 2, title: 'post2' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
-          { id: 2, postId: 1, content: 'c2' },
-          { id: 3, postId: 2, content: 'c3' },
+          { id: 1, postsId: 1, content: 'c1' },
+          { id: 2, postsId: 1, content: 'c2' },
+          { id: 3, postsId: 2, content: 'c3' },
         ],
       });
       const result = await store.get('posts', { _embed: 'comments' });
@@ -495,8 +495,8 @@ export function testMain(Store) {
           { id: 1, title: 'post1' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
-          { id: 2, postId: 1, content: 'c2' },
+          { id: 1, postsId: 1, content: 'c1' },
+          { id: 2, postsId: 1, content: 'c2' },
         ],
       });
       const result = await store.get('posts/1', { _embed: 'comments' });
@@ -510,14 +510,14 @@ export function testMain(Store) {
           { id: 2, title: 'post2' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
-          { id: 2, postId: 2, content: 'c2' },
+          { id: 1, postsId: 1, content: 'c1' },
+          { id: 2, postsId: 2, content: 'c2' },
         ],
       });
-      const result = await store.get('comments', { _expand: 'post' });
+      const result = await store.get('comments', { _expand: 'posts' });
       expect(result.length).to.equal(2);
-      expect(result[0].post.title).to.equal('post1');
-      expect(result[1].post.title).to.equal('post2');
+      expect(result[0].posts.title).to.equal('post1');
+      expect(result[1].posts.title).to.equal('post2');
     });
     it('get 在子详情中扩展父详情', async () => {
       const store = new Store({
@@ -525,11 +525,11 @@ export function testMain(Store) {
           { id: 1, title: 'post1' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
+          { id: 1, postsId: 1, content: 'c1' },
         ],
       });
-      const result = await store.get('comments/1', { _expand: 'post' });
-      expect(result.post.title).to.equal('post1');
+      const result = await store.get('comments/1', { _expand: 'posts' });
+      expect(result.posts.title).to.equal('post1');
     });
   });
 
@@ -542,9 +542,9 @@ export function testMain(Store) {
           { id: 2, title: 'post2' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
-          { id: 2, postId: 1, content: 'c2' },
-          { id: 3, postId: 2, content: 'c3' },
+          { id: 1, postsId: 1, content: 'c1' },
+          { id: 2, postsId: 1, content: 'c2' },
+          { id: 3, postsId: 2, content: 'c3' },
         ],
       });
       const result = await store.get('posts/1/comments');
@@ -558,13 +558,13 @@ export function testMain(Store) {
           { id: 1, title: 'post1' },
         ],
         comments: [
-          { id: 1, postId: 1, content: 'c1' },
+          { id: 1, postsId: 1, content: 'c1' },
         ],
       });
       const newComment = { content: 'c2' };
       const result = await store.post('posts/1/comments', newComment);
       expect(result.id).to.equal(2);
-      expect(result.postId).to.equal(1);
+      expect(result.postsId).to.equal(1);
       expect(result.content).to.equal('c2');
       const comments = await store.get('posts/1/comments');
       expect(comments.length).to.equal(2);

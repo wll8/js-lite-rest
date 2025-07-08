@@ -125,8 +125,7 @@ export class JsonAdapter {
     if (segs.length === 3) {
       const [parentTable, parentId, childTable] = segs;
       if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
-        // 约定：子表有 parentTable.slice(0, -1) + 'Id' 字段
-        const parentIdKey = parentTable.slice(0, -1) + 'Id';
+        const parentIdKey = parentTable + 'Id';
         return this.data[childTable].filter(item => String(item[parentIdKey]) === parentId);
       }
     }
@@ -199,7 +198,7 @@ export class JsonAdapter {
           filteredData.forEach(item => {
             if (!item) return;
             const idKey = item.id;
-            item[embedField] = childArr.filter(child => child[`${segs[0].slice(0, -1)}Id`] == idKey);
+            item[embedField] = childArr.filter(child => child[`${segs[0]}Id`] == idKey);
           });
         }
       }
@@ -207,7 +206,7 @@ export class JsonAdapter {
       if (_expand && this.data) {
         const expandFields = Array.isArray(_expand) ? _expand : String(_expand).split(',');
         for (const expandField of expandFields) {
-          const parentArr = this.data[expandField + 's'];
+          const parentArr = this.data[expandField];
           if (!Array.isArray(parentArr)) continue;
           filteredData.forEach(item => {
             if (!item) return;
@@ -289,7 +288,7 @@ export class JsonAdapter {
     if (segs.length === 3) {
       const [parentTable, parentId, childTable] = segs;
       if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
-        const parentIdKey = parentTable.slice(0, -1) + 'Id';
+        const parentIdKey = parentTable + 'Id';
         const newData = { ...data, [parentIdKey]: isNaN(Number(parentId)) ? parentId : Number(parentId) };
         // 自动分配 id
         const arr = this.data[childTable];
