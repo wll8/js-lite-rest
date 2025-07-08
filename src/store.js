@@ -21,8 +21,8 @@ function compose(middlewares, core, opt) {
 
 export class Store {
   constructor(data, opt = {}) {
-    this.opt = opt;
-    this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data);
+    this.opt = { idKeySuffix: 'Id', ...opt };
+    this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data, this.opt);
     this.middlewares = [];
     
     // 定义支持的 HTTP 方法映射
@@ -63,7 +63,8 @@ export class Store {
 
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
 export class JsonAdapter {
-  constructor(data) {
+  constructor(data, opt) {
+    this.opt = opt;
     this.env = this.detectEnv();
     if (typeof data === 'object' && data !== null) {
       this.data = data;
@@ -83,7 +84,6 @@ export class JsonAdapter {
         this.data = JSON.parse(window.localStorage.getItem(this.key) || '{}');
       }
     } else if (data == null) {
-      // 默认 key
       if (this.env === 'node') {
         this.mode = 'file';
         this.filePath = 'js-store.json';
@@ -106,6 +106,10 @@ export class JsonAdapter {
     return 'unknown';
   }
 
+  getRelationKey(table) {
+    return table + this.opt.idKeySuffix;
+  }
+
   save() {
     if (this.mode === 'file') {
       this.fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
@@ -125,7 +129,7 @@ export class JsonAdapter {
     if (segs.length === 3) {
       const [parentTable, parentId, childTable] = segs;
       if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
-        const parentIdKey = parentTable + 'Id';
+        const parentIdKey = this.getRelationKey(parentTable);
         return this.data[childTable].filter(item => String(item[parentIdKey]) === parentId);
       }
     }
@@ -198,7 +202,7 @@ export class JsonAdapter {
           filteredData.forEach(item => {
             if (!item) return;
             const idKey = item.id;
-            item[embedField] = childArr.filter(child => child[`${segs[0]}Id`] == idKey);
+            item[embedField] = childArr.filter(child => child[this.getRelationKey(segs[0])] == idKey);
           });
         }
       }
@@ -210,7 +214,7 @@ export class JsonAdapter {
           if (!Array.isArray(parentArr)) continue;
           filteredData.forEach(item => {
             if (!item) return;
-            const parent = parentArr.find(parent => parent.id == item[`${expandField}Id`]);
+            const parent = parentArr.find(parent => parent.id == item[this.getRelationKey(expandField)]);
             if (parent) item[expandField] = parent;
           });
         }
@@ -285,18 +289,16 @@ export class JsonAdapter {
       });
     }
     // 嵌套资源 POST /posts/1/comments
-    if (segs.length === 3) {
+    if (segs.length === 3 && Array.isArray(this.data[segs[2]])) {
       const [parentTable, parentId, childTable] = segs;
-      if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
-        const parentIdKey = parentTable + 'Id';
-        const newData = { ...data, [parentIdKey]: isNaN(Number(parentId)) ? parentId : Number(parentId) };
-        // 自动分配 id
-        const arr = this.data[childTable];
-        newData.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
-        arr.push(newData);
-        this.save();
-        return newData;
-      }
+      const parentIdKey = this.getRelationKey(parentTable);
+      const newData = { ...data, [parentIdKey]: isNaN(Number(parentId)) ? parentId : Number(parentId) };
+      // 自动分配 id
+      const arr = this.data[childTable];
+      newData.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+      arr.push(newData);
+      this.save();
+      return newData;
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
