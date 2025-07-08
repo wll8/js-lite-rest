@@ -1,4 +1,4 @@
 import { testMain } from './base.test.js';
-import { Store } from '../dist/js-store.esm.js';
+import { Store } from '../src/store.js';
 
 testMain(Store); 

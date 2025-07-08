@@ -2,7 +2,6 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 const expect = chai.expect;
-import { Store } from './store.js';
 
 export function testMain(Store) {
   // 基本操作
@@ -884,5 +883,3 @@ export function testMain(Store) {
     });
   });
 }
-
-testMain(Store);

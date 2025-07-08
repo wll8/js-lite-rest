@@ -2,8 +2,6 @@
   "retries": 3,
   "exit": true,
   "timeout": 0,
-  "extension": ["js"],
-  "spec": ["src/**/*.test.js", "test/**/*.test.js"],
   "reporter": "mochawesome",
   "reporter-option": [
     "reportDir=dist",

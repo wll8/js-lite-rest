@@ -6,12 +6,9 @@
   "types": "src/index.d.ts",
   "type": "module",
   "scripts": {
-    "test": "mocha",
+    "test": "mocha --spec test/dev.test.js",
     "build": "rollup -c",
-    "test:report": "mocha --reporter mochawesome",
-    "test:build": "pnpm build && mocha test/build.test.js",
-    "report:merge": "mochawesome-merge mochawesome-results/*.json > mochawesome-results/output.json",
-    "report:generate": "marge mochawesome-results/output.json -f report -o mochawesome-results"
+    "test:build": "pnpm build && mocha --spec test/build.test.js"
   },
   "keywords": [
     "json",
