@@ -63,46 +63,26 @@ export class Store {
 
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
 export class JsonAdapter {
-  constructor(data, opt) {
+  constructor(data, opt = {}) {
     this.opt = opt;
-    this.env = this.detectEnv();
+    this.load = opt.load;
+    this.saveFn = opt.save;
     if (typeof data === 'object' && data !== null) {
       this.data = data;
       this.mode = 'memory';
-    } else if (typeof data === 'string') {
-      this.key = data;
-      if (this.env === 'node') {
-        this.mode = 'file';
-        this.filePath = data;
-        this.fs = require('fs');
-        if (!this.fs.existsSync(this.filePath)) {
-          this.fs.writeFileSync(this.filePath, '{}', 'utf-8');
-        }
-        this.data = JSON.parse(this.fs.readFileSync(this.filePath, 'utf-8'));
+    } else if (typeof data === 'string' || data == null) {
+      this.key = data || 'js-store';
+      this.mode = (this.load && this.saveFn) ? 'custom' : 'memory';
+      if (this.mode === 'custom') {
+        this.data = this.load(this.key);
       } else {
-        this.mode = 'localStorage';
-        this.data = JSON.parse(window.localStorage.getItem(this.key) || '{}');
-      }
-    } else if (data == null) {
-      if (this.env === 'node') {
-        this.mode = 'file';
-        this.filePath = 'js-store.json';
-        this.fs = require('fs');
-        if (!this.fs.existsSync(this.filePath)) {
-          this.fs.writeFileSync(this.filePath, '{}', 'utf-8');
-        }
-        this.data = JSON.parse(this.fs.readFileSync(this.filePath, 'utf-8'));
-      } else {
-        this.mode = 'localStorage';
-        this.key = 'js-store';
-        this.data = JSON.parse(window.localStorage.getItem(this.key) || '{}');
+        this.data = {};
       }
     }
   }
 
   detectEnv() {
     if (typeof window !== 'undefined' && window.localStorage) return 'browser';
-    if (typeof process !== 'undefined' && process.versions && process.versions.node) return 'node';
     return 'unknown';
   }
 
@@ -111,10 +91,8 @@ export class JsonAdapter {
   }
 
   save() {
-    if (this.mode === 'file') {
-      this.fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
-    } else if (this.mode === 'localStorage') {
-      window.localStorage.setItem(this.key, JSON.stringify(this.data));
+    if (this.mode === 'custom' && this.saveFn) {
+      this.saveFn(this.key, this.data);
     }
   }
 

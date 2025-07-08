@@ -1,4 +1,4 @@
 import { testMain } from './base.test.js';
-import { Store } from '../src/store.js';
+import NodeStore from '../src/store.node.js';
 
-testMain(Store); 
+testMain(NodeStore); 
