@@ -1,5 +1,11 @@
 // js-store 主类实现
 
+function getBaseOpt() {
+  return {
+    idKeySuffix: 'Id',
+  };
+}
+
 function compose(middlewares, core, opt) {
   return function (args) {
     let index = -1;
@@ -21,7 +27,7 @@ function compose(middlewares, core, opt) {
 
 export class Store {
   constructor(data, opt = {}) {
-    this.opt = { idKeySuffix: 'Id', ...opt };
+    this.opt = { ...getBaseOpt(), ...opt };
     this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data, this.opt);
     this.middlewares = [];
     
@@ -64,7 +70,7 @@ export class Store {
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
 export class JsonAdapter {
   constructor(data, opt = {}) {
-    this.opt = opt;
+    this.opt = { ...getBaseOpt(), ...opt };
     this.load = opt.load;
     this.saveFn = opt.save;
     if (typeof data === 'object' && data !== null) {

@@ -8,7 +8,9 @@
   "scripts": {
     "test": "mocha --spec test/test.js",
     "test:dev": "mocha --spec test/test.js --",
+    "test:dev:browser": "mocha --spec test/test.js -- dev browser",
     "test:build": "pnpm build && mocha --spec test/test.js -- build",
+    "test:build:browser": "pnpm build && mocha --spec test/test.js -- build browser",
     "build": "rollup -c"
   },
   "keywords": [
@@ -31,6 +33,7 @@
     "rollup": "^4.44.2"
   },
   "dependencies": {
-    "chai-as-promised": "^8.0.1"
+    "chai-as-promised": "^8.0.1",
+    "jsdom": "^26.1.0"
   }
 }
