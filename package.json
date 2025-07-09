@@ -6,9 +6,10 @@
   "types": "src/index.d.ts",
   "type": "module",
   "scripts": {
-    "test": "mocha --spec test/dev.test.js",
-    "build": "rollup -c",
-    "test:build": "pnpm build && mocha --spec test/build.test.js"
+    "test": "mocha --spec test/test.js",
+    "test:dev": "mocha --spec test/test.js --",
+    "test:build": "pnpm build && mocha --spec test/test.js -- build",
+    "build": "rollup -c"
   },
   "keywords": [
     "json",

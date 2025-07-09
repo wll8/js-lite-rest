@@ -13,7 +13,7 @@ function save(key, data) {
 }
 
 class NodeStore extends Store {
-  constructor(data, opt = {}) {
+  constructor(data = `js-store.json`, opt = {}) {
     if (typeof data === 'object' && data !== null) {
       super(data, opt);
     } else {

@@ -3,6 +3,8 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
+import fs from 'fs';
+
 export function testMain(Store) {
   // 基本操作
   describe('基本操作', () => {
@@ -880,6 +882,46 @@ export function testMain(Store) {
       await store.post('book', { title: 'angular' });
       const books3 = await store.get('book');
       expect(books3.length).to.equal(3);
+    });
+  });
+}
+
+export async function testNodeStoreBasic(NodeStore) {
+  const TEST_FILE = 'test-node-store.json';
+
+  describe('NodeStore 基础功能', () => {
+    afterEach(() => {
+      if (fs.existsSync(TEST_FILE)) fs.unlinkSync(TEST_FILE);
+    });
+
+    it('支持文件持久化：增删改查', async () => {
+      // 新建 store
+      const store = new NodeStore(TEST_FILE);
+      // 新增
+      await store.post('book', { title: 'js' });
+      await store.post('book', { title: 'css' });
+      let books = await store.get('book');
+      expect(books.length).to.equal(2);
+      expect(books[0].title).to.equal('js');
+      // 修改
+      await store.put('book/1', { title: 'html' });
+      let book = await store.get('book/1');
+      expect(book.title).to.equal('html');
+      // 删除
+      await store.delete('book/2');
+      books = await store.get('book');
+      expect(books.length).to.equal(1);
+      // 检查文件内容
+      const fileContent = JSON.parse(fs.readFileSync(TEST_FILE, 'utf-8'));
+      expect(fileContent.book.length).to.equal(1);
+      expect(fileContent.book[0].title).to.equal('html');
+    });
+
+    it('支持初始化时传对象（内存模式）', async () => {
+      const store = new NodeStore({ foo: [{ id: 1, bar: 'baz' }] });
+      const foo = await store.get('foo');
+      expect(foo.length).to.equal(1);
+      expect(foo[0].bar).to.equal('baz');
     });
   });
 }
