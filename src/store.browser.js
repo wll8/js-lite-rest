@@ -8,10 +8,10 @@ function save(key, data) {
   window.localStorage.setItem(key, JSON.stringify(data));
 }
 
-class BrowserStore extends Store {
+class JsStore extends Store {
   constructor(key, opt = {}) {
     super(key, { ...opt, adapter: new JsonAdapter(key, { ...opt, load, save }) });
   }
 }
 
-export default BrowserStore; 
+export default JsStore; 

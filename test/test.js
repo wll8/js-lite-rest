@@ -1,4 +1,4 @@
-import { testMain, testNodeStoreBasic } from './base.test.js';
+import { testMain, testNodeStoreBasic, testBrowserStore } from './base.test.js';
 
 // 支持通过 -- 传递自定义参数
 const args = process.argv;
@@ -21,22 +21,24 @@ async function setupJSDOM() {
 
 if (mode === 'dev') {
   if (env === 'node') {
-    const NodeStore = (await import('../src/store.node.js')).default;
-    testMain(NodeStore);
-    testNodeStoreBasic(NodeStore);
+    const JsStore = (await import('../src/store.node.js')).default;
+    testMain(JsStore);
+    testNodeStoreBasic(JsStore);
   } else if (env === 'browser') {
     await setupJSDOM();
-    const BrowserStore = (await import('../src/store.browser.js')).default;
-    testMain(BrowserStore);
+    const JsStore = (await import('../src/store.browser.js')).default;
+    testMain(JsStore);
+    testBrowserStore(JsStore);
   }
 } else if (mode === 'build') {
   if (env === 'node') {
-    const NodeStore = (await import('../dist/js-store.node.esm.js')).default;
-    testMain(NodeStore);
-    testNodeStoreBasic(NodeStore);
+    const JsStore = (await import('../dist/js-store.node.esm.js')).default;
+    testMain(JsStore);
+    testNodeStoreBasic(JsStore);
   } else if (env === 'browser') {
     await setupJSDOM();
-    const BrowserStore = (await import('../dist/js-store.browser.esm.js')).default;
-    testMain(BrowserStore);
+    const JsStore = (await import('../dist/js-store.browser.esm.js')).default;
+    testMain(JsStore);
+    testBrowserStore(JsStore);
   }
 } 

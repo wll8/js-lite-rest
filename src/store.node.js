@@ -12,7 +12,7 @@ function save(key, data) {
   fs.writeFileSync(key, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-class NodeStore extends Store {
+class JsStore extends Store {
   constructor(data = `js-store.json`, opt = {}) {
     if (typeof data === 'object' && data !== null) {
       super(data, opt);
@@ -22,4 +22,4 @@ class NodeStore extends Store {
   }
 }
 
-export default NodeStore; 
+export default JsStore; 
