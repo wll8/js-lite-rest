@@ -29,22 +29,51 @@ function compose(middlewares, core, opt) {
 }
 
 export class Store {
-  constructor(data, opt = {}) {
-    if(typeof data === `string`) {
-      opt.savePath = data;
-      data = opt.load(opt.savePath);
-    } 
+  constructor(data = {}, opt = {}) {
     this.opt = getBaseOpt(opt);
-    this.opt.adapter = this.opt.adapter || new JsonAdapter(data, this.opt);
     this.middlewares = [];
-    
+
     // 定义支持的 HTTP 方法映射
     this.methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-    
+
     // 自动生成 HTTP 方法
     this.methods.forEach(method => {
       this[method] = (path, ...args) => this._request(method, path, ...args);
     });
+
+    // 初始化数据和适配器
+    this._initPromise = this._initialize(data, opt);
+  }
+
+  // 静态方法用于异步创建 Store 实例
+  static async create(data = {}, opt = {}) {
+    const store = new Store(data, opt);
+    await store._ensureInitialized();
+    return store;
+  }
+
+  async _initialize(data = {}, opt = {}) {
+    if(typeof data === `string`) {
+      this.opt.savePath = data;
+      // 异步加载数据
+      if (this.opt.load) {
+        data = await this.opt.load(this.opt.savePath);
+      } else {
+        throw new Error('load 方法未定义');
+      }
+    }
+    // 即使是直接传入数据对象，也要等待一个微任务，确保初始化的一致性
+    await Promise.resolve();
+    this.opt.adapter = this.opt.adapter || new JsonAdapter(data, this.opt);
+    return this;
+  }
+
+  // 确保初始化完成的辅助方法
+  async _ensureInitialized() {
+    if (this._initPromise) {
+      await this._initPromise;
+      this._initPromise = null;
+    }
   }
 
   use(fn) {
@@ -53,14 +82,17 @@ export class Store {
   }
 
   async _request(method, path, ...args) {
+    // 确保初始化完成
+    await this._ensureInitialized();
+
     const core = async (_args) => {
       const [method, path, ...restArgs] = _args;
-      
+
       // 检查方法是否支持
       if (!this.methods.includes(method)) {
         throw new Error(`不支持的 HTTP 方法: ${method}`);
       }
-      
+
       // 动态调用适配器方法
       if (typeof this.opt.adapter[method] === 'function') {
         return await this.opt.adapter[method](path, ...restArgs);
@@ -68,7 +100,7 @@ export class Store {
         throw new Error(`适配器不支持 ${method} 方法`);
       }
     };
-    
+
     const fn = compose(this.middlewares, core, this.opt);
     return fn([method, path, ...args]);
   }
@@ -76,7 +108,7 @@ export class Store {
 
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
 export class JsonAdapter {
-  constructor(data, opt = {}) {
+  constructor(data = {}, opt = {}) {
     this.opt = opt;
     this.data = data;
   }
@@ -85,8 +117,10 @@ export class JsonAdapter {
     return table + this.opt.idKeySuffix;
   }
 
-  save() {
-    this.opt.save(this.opt.savePath, this.data);
+  async save() {
+    if (this.opt.save) {
+      await this.opt.save(this.opt.savePath, this.data);
+    }
   }
 
   parsePath(path) {
@@ -245,19 +279,24 @@ export class JsonAdapter {
     return cur;
   }
 
-  post(path, data) {
+  async post(path, data) {
     const segs = this.parsePath(path);
     // 批量创建 /posts，body为数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      return data.map(item => {
-        if (item.id !== undefined) return null;
+      const results = [];
+      for (const item of data) {
+        if (item.id !== undefined) {
+          results.push(null);
+          continue;
+        }
         const newItem = { ...item };
         newItem.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
         arr.push(newItem);
-        this.save();
-        return newItem;
-      });
+        results.push(newItem);
+      }
+      await this.save();
+      return results;
     }
     // 嵌套资源 POST /posts/1/comments
     if (segs.length === 3 && Array.isArray(this.data[segs[2]])) {
@@ -268,7 +307,7 @@ export class JsonAdapter {
       const arr = this.data[childTable];
       newData.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
       arr.push(newData);
-      this.save();
+      await this.save();
       return newData;
     }
     let cur = this.data;
@@ -281,23 +320,31 @@ export class JsonAdapter {
     if (!Array.isArray(cur[key])) throw new Error('只能向数组添加');
     data.id = cur[key].length ? (cur[key][cur[key].length - 1].id + 1) : 1;
     cur[key].push(data);
-    this.save();
+    await this.save();
     return data;
   }
 
-  put(path, data) {
+  async put(path, data) {
     const segs = this.parsePath(path);
     // 批量全量修改 /posts，body为带id数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      return data.map(item => {
-        if (item.id === undefined) return null;
+      const results = [];
+      for (const item of data) {
+        if (item.id === undefined) {
+          results.push(null);
+          continue;
+        }
         const idx = arr.findIndex(x => String(x.id) === String(item.id));
-        if (idx === -1) return null;
+        if (idx === -1) {
+          results.push(null);
+          continue;
+        }
         arr[idx] = { ...arr[idx], ...item };
-        this.save();
-        return arr[idx];
-      });
+        results.push(arr[idx]);
+      }
+      await this.save();
+      return results;
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
@@ -309,24 +356,28 @@ export class JsonAdapter {
     const idx = cur.findIndex(item => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
-    this.save();
+    await this.save();
     return cur[idx];
   }
 
-  delete(path, query) {
+  async delete(path, query) {
     const segs = this.parsePath(path);
     // 批量删除 /posts?id=1&id=2
     if (segs.length === 1 && query && query.id && this.data && Array.isArray(this.data[segs[0]])) {
       const ids = Array.isArray(query.id) ? query.id : [query.id];
       const arr = this.data[segs[0]];
-      const result = ids.map(id => {
+      const results = [];
+      for (const id of ids) {
         const idx = arr.findIndex(item => String(item.id) === String(id));
-        if (idx === -1) return null;
+        if (idx === -1) {
+          results.push(null);
+          continue;
+        }
         const del = arr.splice(idx, 1)[0];
-        this.save();
-        return del;
-      });
-      return result;
+        results.push(del);
+      }
+      await this.save();
+      return results;
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
@@ -338,23 +389,31 @@ export class JsonAdapter {
     const idx = cur.findIndex(item => String(item.id) === key);
     if (idx === -1) return null;
     const del = cur.splice(idx, 1)[0];
-    this.save();
+    await this.save();
     return del;
   }
 
-  patch(path, data) {
+  async patch(path, data) {
     const segs = this.parsePath(path);
     // 批量部分修改 /posts，body为带id数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      return data.map(item => {
-        if (item.id === undefined) return null;
+      const results = [];
+      for (const item of data) {
+        if (item.id === undefined) {
+          results.push(null);
+          continue;
+        }
         const idx = arr.findIndex(x => String(x.id) === String(item.id));
-        if (idx === -1) return null;
+        if (idx === -1) {
+          results.push(null);
+          continue;
+        }
         arr[idx] = { ...arr[idx], ...item };
-        this.save();
-        return arr[idx];
-      });
+        results.push(arr[idx]);
+      }
+      await this.save();
+      return results;
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
@@ -366,7 +425,7 @@ export class JsonAdapter {
     const idx = cur.findIndex(item => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
-    this.save();
+    await this.save();
     return cur[idx];
   }
 } 

@@ -12,14 +12,12 @@ const jsonObject = {
 const store = new Store(jsonObject)
 
 // 查询数据
-store.get("book", {
+await store.get("book", {
   title: "css",
 })
 
 // 获取详情
-store.get("book/1")
-
-
+await store.get("book/1")
 ```
 
 

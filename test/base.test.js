@@ -6,12 +6,14 @@ const expect = chai.expect;
 import fs from 'fs';
 
 export function testMain(Store, opt = {}) {
-  afterEach(opt.afterEach)
+  if (opt.afterEach) {
+    afterEach(opt.afterEach);
+  }
   // 基本操作
   describe('基本操作', () => {
     let store;
-    beforeEach(() => {
-      store = new Store({
+    beforeEach(async () => {
+      store = await Store.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -44,7 +46,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].id).to.equal(2);
     });
     it('patch 部分更新', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', author: 'A' },
           { id: 2, title: 'js', author: 'B' },
@@ -62,7 +64,7 @@ export function testMain(Store, opt = {}) {
   // 过滤
   describe('过滤', () => {
     it('get 查询', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -73,7 +75,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].title).to.equal('css');
     });
     it('get 多字段过滤', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', type: 'js', discount: 1 },
           { id: 2, title: 'js', type: 'js', discount: 0 },
@@ -85,7 +87,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].id).to.equal(1);
     });
     it('get 同字段多值过滤', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -97,7 +99,7 @@ export function testMain(Store, opt = {}) {
       expect(books.map(b => b.id)).to.include(1).and.include(2);
     });
     it('get 点语法深层字段过滤', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', author: { name: '张三' } },
           { id: 2, title: 'js', author: { name: '李四' } },
@@ -112,7 +114,7 @@ export function testMain(Store, opt = {}) {
   // 分页
   describe('分页', () => {
     it('get 分页功能', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -141,7 +143,7 @@ export function testMain(Store, opt = {}) {
       expect(page4Limit2.length).to.equal(0);
     });
     it('get 分页与过滤结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -160,7 +162,7 @@ export function testMain(Store, opt = {}) {
   // 排序
   describe('排序', () => {
     it('get 单字段排序', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', view: 100 },
           { id: 2, title: 'js', view: 200 },
@@ -177,7 +179,7 @@ export function testMain(Store, opt = {}) {
       expect(descResult[2].view).to.equal(50);
     });
     it('get 多字段排序', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', user: 'A', view: 100 },
           { id: 2, title: 'js', user: 'A', view: 200 },
@@ -196,7 +198,7 @@ export function testMain(Store, opt = {}) {
       expect(result[3].view).to.equal(200);
     });
     it('get 排序与过滤结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', type: 'programming', view: 100 },
           { id: 2, title: 'css', type: 'design', view: 200 },
@@ -210,7 +212,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(200);
     });
     it('get 排序与分页结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1', view: 100 },
           { id: 2, title: 'book2', view: 200 },
@@ -225,7 +227,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(200);
     });
     it('get 深层字段排序', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'css', author: { name: '张三', age: 30 } },
           { id: 2, title: 'js', author: { name: '李四', age: 25 } },
@@ -332,7 +334,7 @@ export function testMain(Store, opt = {}) {
   // 运算
   describe('运算', () => {
     it('get 范围查询 - gte和lte', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1', view: 2000 },
           { id: 2, title: 'book2', view: 4000 },
@@ -346,7 +348,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(6000);
     });
     it('get 排除查询 - ne', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -359,7 +361,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].id).to.equal(3);
     });
     it('get 模糊查询 - like单模式', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'javascript', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -374,7 +376,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].title).to.equal('python');
     });
     it('get 模糊查询 - like多模式', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'javascript', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -387,7 +389,7 @@ export function testMain(Store, opt = {}) {
       expect(result[0].title).to.equal('javascript');
     });
     it('get 运算查询与过滤结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', type: 'programming', view: 1000 },
           { id: 2, title: 'css', type: 'design', view: 2000 },
@@ -402,7 +404,7 @@ export function testMain(Store, opt = {}) {
       expect(result2[0].id).to.equal(4);
     });
     it('get 运算查询与排序结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1', view: 1000 },
           { id: 2, title: 'book2', view: 3000 },
@@ -416,7 +418,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(2000);
     });
     it('get 深层字段运算查询', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1', author: { name: '张三', age: 25 } },
           { id: 2, title: 'book2', author: { name: '李四', age: 30 } },
@@ -433,7 +435,7 @@ export function testMain(Store, opt = {}) {
   // 全文检索
   describe('全文检索', () => {
     it('get 全文检索 _q参数', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
           { id: 2, title: 'css', author: { name: '李四' }, desc: '设计' },
@@ -456,7 +458,7 @@ export function testMain(Store, opt = {}) {
       expect(result5[0].title).to.equal('html');
     });
     it('get 全文检索 _q参数 - 命中多条', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
           { id: 2, title: 'css', author: { name: '李四' }, desc: '设计' },
@@ -654,9 +656,9 @@ export function testMain(Store, opt = {}) {
   // 拦截器功能（保持原有）
   describe('拦截器功能', () => {
     let store;
-    
-    beforeEach(() => {
-      store = new Store({
+
+    beforeEach(async () => {
+      store = await Store.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -896,8 +898,8 @@ export async function testNodeStoreBasic(JsStore) {
     });
 
     it('json', async () => {
-      // 新建 store
-      const store = new JsStore(TEST_FILE);
+      // 新建 store - 使用异步创建方法
+      const store = await JsStore.create(TEST_FILE);
       // 新增
       await store.post('book', { title: 'js' });
       await store.post('book', { title: 'css' });
@@ -927,7 +929,7 @@ export function testBrowserStore(JsStore) {
       window.localStorage.removeItem(TEST_KEY);
     });
     it('localStorage', async () => {
-      const store = new JsStore(TEST_KEY);
+      const store = await JsStore.create(TEST_KEY);
       // 新增
       await store.post('book', { title: 'js' });
       await store.post('book', { title: 'css' });
