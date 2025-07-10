@@ -89,8 +89,9 @@ await store.delete('books/2');
 
 ## 参数
 
-### Store(data, opt)
+### createStore(data, opt)
 
+``` txt
 data 数据源。
   如果传入字符串：
     在 nodejs 作为 json 文件路径。
@@ -110,12 +111,13 @@ opt 配置选项。
     支持适配器：
       json(data) - 默认适配器，将数据转为 json，可在 node 和浏览器中使用。参数和 Store 中的 data 一样。
       sqlLite(dbUrl) - 转换请求为 sqlLite 数据库语句。
+```
 
 ## todo
-  - [ ] feat: json 适配器
-  - [ ] feat: 浏览器支持
-  - [ ] feat: 拦截器
-  - [ ] feat: nodejs 支持
+  - [x] feat: json 适配器
+  - [x] feat: 浏览器支持
+  - [x] feat: 拦截器
+  - [x] feat: nodejs 支持
   - [ ] feat: sqlLite 适配器
 
 ## 开发环境
