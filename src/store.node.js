@@ -1,4 +1,4 @@
-import { Store, JsonAdapter } from './store.js';
+import { Store } from './store.js';
 import fs from 'fs';
 
 function load(key) {
@@ -13,12 +13,8 @@ function save(key, data) {
 }
 
 class JsStore extends Store {
-  constructor(data = `js-store.json`, opt = {}) {
-    if (typeof data === 'object' && data !== null) {
-      super(data, opt);
-    } else {
-      super(data, { ...opt, adapter: new JsonAdapter(data, { ...opt, load, save }) });
-    }
+  constructor(data = {}, opt = {savePath: `js-store.json`, load, save}) {
+    super(data, opt);
   }
 }
 

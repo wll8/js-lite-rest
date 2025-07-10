@@ -1,9 +1,12 @@
 // js-store 主类实现
 
-function getBaseOpt() {
-  return {
+function getBaseOpt(opt = {}) {
+  const newOpt = {
     idKeySuffix: 'Id',
-  };
+    savePath: '',
+    ...opt,
+  }
+  return newOpt
 }
 
 function compose(middlewares, core, opt) {
@@ -27,8 +30,12 @@ function compose(middlewares, core, opt) {
 
 export class Store {
   constructor(data, opt = {}) {
-    this.opt = { ...getBaseOpt(), ...opt };
-    this.adapter = opt.adapter ? opt.adapter : new JsonAdapter(data, this.opt);
+    if(typeof data === `string`) {
+      opt.savePath = data;
+      data = opt.load(opt.savePath);
+    } 
+    this.opt = getBaseOpt(opt);
+    this.opt.adapter = this.opt.adapter || new JsonAdapter(data, this.opt);
     this.middlewares = [];
     
     // 定义支持的 HTTP 方法映射
@@ -55,8 +62,8 @@ export class Store {
       }
       
       // 动态调用适配器方法
-      if (typeof this.adapter[method] === 'function') {
-        return await this.adapter[method](path, ...restArgs);
+      if (typeof this.opt.adapter[method] === 'function') {
+        return await this.opt.adapter[method](path, ...restArgs);
       } else {
         throw new Error(`适配器不支持 ${method} 方法`);
       }
@@ -70,26 +77,8 @@ export class Store {
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
 export class JsonAdapter {
   constructor(data, opt = {}) {
-    this.opt = { ...getBaseOpt(), ...opt };
-    this.load = opt.load;
-    this.saveFn = opt.save;
-    if (typeof data === 'object' && data !== null) {
-      this.data = data;
-      this.mode = 'memory';
-    } else if (typeof data === 'string' || data == null) {
-      this.key = data || 'js-store';
-      this.mode = (this.load && this.saveFn) ? 'custom' : 'memory';
-      if (this.mode === 'custom') {
-        this.data = this.load(this.key);
-      } else {
-        this.data = {};
-      }
-    }
-  }
-
-  detectEnv() {
-    if (typeof window !== 'undefined' && window.localStorage) return 'browser';
-    return 'unknown';
+    this.opt = opt;
+    this.data = data;
   }
 
   getRelationKey(table) {
@@ -97,9 +86,7 @@ export class JsonAdapter {
   }
 
   save() {
-    if (this.mode === 'custom' && this.saveFn) {
-      this.saveFn(this.key, this.data);
-    }
+    this.opt.save(this.opt.savePath, this.data);
   }
 
   parsePath(path) {

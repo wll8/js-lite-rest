@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { testMain, testNodeStoreBasic, testBrowserStore } from './base.test.js';
 
 // 支持通过 -- 传递自定义参数
@@ -19,26 +20,35 @@ async function setupJSDOM() {
   global.localStorage = dom.window.localStorage;
 }
 
-if (mode === 'dev') {
-  if (env === 'node') {
-    const JsStore = (await import('../src/store.node.js')).default;
-    testMain(JsStore);
+const envMap = {
+  async node(path) {
+    const JsStore = (await import(path)).default;
+    testMain(JsStore, {
+      afterEach() {
+        const savePath = `js-store.json`
+        if (fs.existsSync(savePath)) fs.unlinkSync(savePath);
+      }
+    });
     testNodeStoreBasic(JsStore);
-  } else if (env === 'browser') {
+  },
+  async browser(path) {
     await setupJSDOM();
-    const JsStore = (await import('../src/store.browser.js')).default;
+    const JsStore = (await import(path)).default;
     testMain(JsStore);
     testBrowserStore(JsStore);
+  },
+}
+
+if (mode === 'dev') {
+  if (env === 'node') {
+    await envMap[env]('../src/store.node.js')
+  } else if (env === 'browser') {
+    await envMap[env]('../src/store.browser.js')
   }
 } else if (mode === 'build') {
   if (env === 'node') {
-    const JsStore = (await import('../dist/js-store.node.esm.js')).default;
-    testMain(JsStore);
-    testNodeStoreBasic(JsStore);
+    await envMap[env]('../src/store.node.js')
   } else if (env === 'browser') {
-    await setupJSDOM();
-    const JsStore = (await import('../dist/js-store.browser.esm.js')).default;
-    testMain(JsStore);
-    testBrowserStore(JsStore);
+    await envMap[env]('../dist/js-store.browser.esm.js')
   }
 } 

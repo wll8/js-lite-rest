@@ -5,7 +5,8 @@ const expect = chai.expect;
 
 import fs from 'fs';
 
-export function testMain(Store) {
+export function testMain(Store, opt = {}) {
+  afterEach(opt.afterEach)
   // 基本操作
   describe('基本操作', () => {
     let store;
@@ -886,7 +887,7 @@ export function testMain(Store) {
   });
 }
 
-export async function testNodeStoreBasic(NodeStore) {
+export async function testNodeStoreBasic(JsStore) {
   const TEST_FILE = 'test-node-store.json';
 
   describe('文件持久化', () => {
@@ -896,7 +897,7 @@ export async function testNodeStoreBasic(NodeStore) {
 
     it('json', async () => {
       // 新建 store
-      const store = new NodeStore(TEST_FILE);
+      const store = new JsStore(TEST_FILE);
       // 新增
       await store.post('book', { title: 'js' });
       await store.post('book', { title: 'css' });

@@ -9,9 +9,10 @@ function save(key, data) {
 }
 
 class JsStore extends Store {
-  constructor(key, opt = {}) {
-    super(key, { ...opt, adapter: new JsonAdapter(key, { ...opt, load, save }) });
+  constructor(data = {}, opt = {savePath: `js-store`, load, save}) {
+    super(data, opt);
   }
 }
+
 
 export default JsStore; 
