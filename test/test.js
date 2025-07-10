@@ -22,20 +22,25 @@ async function setupJSDOM() {
 
 const envMap = {
   async node(path) {
-    const JsStore = (await import(path)).default;
-    testMain(JsStore, {
+    const create = (await import(path)).default;
+    testMain({ create }, {
       afterEach() {
         const savePath = `js-store.json`
         if (fs.existsSync(savePath)) fs.unlinkSync(savePath);
       }
     });
-    testNodeStoreBasic(JsStore);
+    testNodeStoreBasic({ create });
   },
   async browser(path) {
     await setupJSDOM();
-    const JsStore = (await import(path)).default;
-    testMain(JsStore);
-    testBrowserStore(JsStore);
+    const create = (await import(path)).default;
+    testMain({ create }, {
+      afterEach() {
+        const savePath = `js-store`
+        window.localStorage.removeItem(savePath);
+      }
+    });
+    testBrowserStore({ create });
   },
 }
 

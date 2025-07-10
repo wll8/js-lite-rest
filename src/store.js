@@ -3,7 +3,7 @@
 function getBaseOpt(opt = {}) {
   const newOpt = {
     idKeySuffix: 'Id',
-    savePath: '',
+    savePath: typeof window === 'undefined' ? `js-store.json` : `js-store`,
     ...opt,
   }
   return newOpt
@@ -53,6 +53,8 @@ export class Store {
   }
 
   async _initialize(data = {}, opt = {}) {
+    let shouldSaveInitialData = false;
+
     if(typeof data === `string`) {
       this.opt.savePath = data;
       // 异步加载数据
@@ -61,10 +63,20 @@ export class Store {
       } else {
         throw new Error('load 方法未定义');
       }
+    } else {
+      // 传入数据对象时，也需要进行初始保存
+      shouldSaveInitialData = true;
     }
+
     // 即使是直接传入数据对象，也要等待一个微任务，确保初始化的一致性
     await Promise.resolve();
     this.opt.adapter = this.opt.adapter || new JsonAdapter(data, this.opt);
+
+    // 如果传入的是数据对象且有 save 函数，进行初始保存
+    if (shouldSaveInitialData && this.opt.save && this.opt.savePath) {
+      await this.opt.adapter.save();
+    }
+
     return this;
   }
 

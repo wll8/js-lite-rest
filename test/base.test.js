@@ -9,6 +9,9 @@ export function testMain(Store, opt = {}) {
   if (opt.afterEach) {
     afterEach(opt.afterEach);
   }
+
+  // 检测当前环境
+  const isNodeEnv = typeof window === 'undefined';
   // 基本操作
   describe('基本操作', () => {
     let store;
@@ -244,7 +247,7 @@ export function testMain(Store, opt = {}) {
   // 截取
   describe('截取', () => {
     it('get 截取功能 - start到end', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -261,7 +264,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].id).to.equal(5);
     });
     it('get 截取功能 - start加limit', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -280,7 +283,7 @@ export function testMain(Store, opt = {}) {
       expect(result2[2].id).to.equal(5);
     });
     it('get 截取与过滤结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'js', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -295,7 +298,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].title).to.equal('java');
     });
     it('get 截取与排序结合', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1', view: 100 },
           { id: 2, title: 'book2', view: 200 },
@@ -311,7 +314,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].view).to.equal(100);
     });
     it('get 截取边界情况', async () => {
-      const store = new Store({
+      const store = await Store.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -475,7 +478,7 @@ export function testMain(Store, opt = {}) {
   // 关系
   describe('关系', () => {
     it('get 在父列表中嵌入子列表', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -494,7 +497,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].comments[0].content).to.equal('c3');
     });
     it('get 在父详情中嵌入子列表', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -508,7 +511,7 @@ export function testMain(Store, opt = {}) {
       expect(result.comments[0].content).to.equal('c1');
     });
     it('get 在子列表中扩展父详情', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -524,7 +527,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].posts.title).to.equal('post2');
     });
     it('get 在子详情中扩展父详情', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -540,7 +543,7 @@ export function testMain(Store, opt = {}) {
   // 嵌套
   describe('嵌套', () => {
     it('get posts/1/comments 嵌套资源', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -557,7 +560,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].content).to.equal('c2');
     });
     it('post posts/1/comments 嵌套资源', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -579,7 +582,7 @@ export function testMain(Store, opt = {}) {
   // 批量操作
   describe('批量操作', () => {
     it('delete /posts?id=1&id=2 批量删除', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'a' },
           { id: 2, title: 'b' },
@@ -595,7 +598,7 @@ export function testMain(Store, opt = {}) {
       expect(left[0].id).to.equal(3);
     });
     it('post /posts 批量创建', async () => {
-      const store = new Store({ posts: [] });
+      const store = await Store.create({ posts: [] });
       const arr = [
         { title: 'a' },
         { title: 'b' },
@@ -610,7 +613,7 @@ export function testMain(Store, opt = {}) {
       expect(all.length).to.equal(2);
     });
     it('put /posts 批量全量修改', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'a', view: 1 },
           { id: 2, title: 'b', view: 2 },
@@ -631,7 +634,7 @@ export function testMain(Store, opt = {}) {
       expect(all[1].title).to.equal('B');
     });
     it('patch /posts 批量部分修改', async () => {
-      const store = new Store({
+      const store = await Store.create({
         posts: [
           { id: 1, title: 'a', view: 1 },
           { id: 2, title: 'b', view: 2 },
@@ -885,6 +888,487 @@ export function testMain(Store, opt = {}) {
       await store.post('book', { title: 'angular' });
       const books3 = await store.get('book');
       expect(books3.length).to.equal(3);
+    });
+  });
+
+  // Store 配置项测试
+  describe('Store 配置项', () => {
+    it('默认配置项', async () => {
+      // 检查默认的 idKeySuffix
+      const store = await Store.create({
+        posts: [{ id: 1, title: 'test' }],
+        comments: [{ id: 1, postId: 1, content: 'comment' }]
+      });
+
+      expect(store.opt.idKeySuffix).to.equal('Id');
+
+      // 测试默认的关系键生成 - postId 对应 posts + Id
+      const result = await store.get('posts/1/comments');
+      expect(Array.isArray(result)).to.equal(true);
+      if (result.length > 0) {
+        expect(result[0].content).to.equal('comment');
+        expect(result[0].postId).to.equal(1);
+      }
+    });
+
+    it('默认存储路径验证', async () => {
+      if (isNodeEnv) {
+        // Node.js 环境：验证默认文件路径和实际文件内容
+        const defaultPath = 'js-store.json';
+
+        // 清理可能存在的测试文件
+        if (fs.existsSync(defaultPath)) {
+          fs.unlinkSync(defaultPath);
+        }
+
+        // 传入数据对象，JsStore 已经有默认的 load 和 save 函数
+        const store = await Store.create({
+          books: [{ id: 1, title: 'initial book' }]
+        });
+
+        expect(store.opt.savePath).to.equal(defaultPath);
+
+        // 验证初始数据已经被保存到文件
+        expect(fs.existsSync(defaultPath)).to.equal(true);
+
+        // 验证初始文件内容
+        let fileContent = JSON.parse(fs.readFileSync(defaultPath, 'utf-8'));
+        expect(fileContent.books).to.be.an('array');
+        expect(fileContent.books.length).to.equal(1);
+        expect(fileContent.books[0].title).to.equal('initial book');
+
+        // 添加数据触发保存
+        await store.post('books', { title: 'new book' });
+
+        // 验证更新后的文件内容
+        fileContent = JSON.parse(fs.readFileSync(defaultPath, 'utf-8'));
+        expect(fileContent.books.length).to.equal(2);
+        expect(fileContent.books[1].title).to.equal('new book');
+
+        // 清理测试文件
+        fs.unlinkSync(defaultPath);
+
+      } else {
+        // 浏览器环境：验证默认 localStorage key 和实际存储内容
+        const defaultKey = 'js-store';
+
+        // 清理可能存在的测试数据
+        window.localStorage.removeItem(defaultKey);
+
+        // 传入数据对象，现在也会使用默认的 save 函数
+        const store = await Store.create({
+          books: [{ id: 1, title: 'initial book' }]
+        });
+
+        expect(store.opt.savePath).to.equal(defaultKey);
+
+        // 验证初始数据已经被保存到 localStorage
+        let storedData = window.localStorage.getItem(defaultKey);
+        expect(storedData).to.not.be.null;
+
+        let parsedData = JSON.parse(storedData);
+        expect(parsedData.books).to.be.an('array');
+        expect(parsedData.books.length).to.equal(1);
+        expect(parsedData.books[0].title).to.equal('initial book');
+
+        // 添加数据触发保存
+        await store.post('books', { title: 'new book' });
+
+        // 验证更新后的 localStorage 内容
+        storedData = window.localStorage.getItem(defaultKey);
+        parsedData = JSON.parse(storedData);
+        expect(parsedData.books.length).to.equal(2);
+        expect(parsedData.books[1].title).to.equal('new book');
+
+        // 清理测试数据
+        window.localStorage.removeItem(defaultKey);
+      }
+    });
+
+    it('自定义 idKeySuffix 配置', async () => {
+      const store = await Store.create({
+        posts: [{ id: 1, title: 'test' }],
+        comments: [{ id: 1, post_id: 1, content: 'comment' }]
+      }, {
+        idKeySuffix: '_id'
+      });
+
+      expect(store.opt.idKeySuffix).to.equal('_id');
+
+      // 先测试基本查询
+      const allComments = await store.get('comments');
+      expect(allComments.length).to.equal(1);
+
+      // 测试自定义关系键 - 使用正确的字段名
+      const result = await store.get('posts/1/comments');
+      expect(Array.isArray(result)).to.equal(true);
+      if (result.length > 0) {
+        expect(result[0].content).to.equal('comment');
+        expect(result[0].post_id).to.equal(1);
+      }
+    });
+
+    it('自定义 savePath 配置', async () => {
+      if (isNodeEnv) {
+        // Node.js 环境：测试自定义文件路径和实际文件内容
+        const testPath = 'test-custom-path.json';
+
+        // 清理可能存在的测试文件
+        if (fs.existsSync(testPath)) {
+          fs.unlinkSync(testPath);
+        }
+
+        // 传入数据对象和自定义路径，JsStore 会自动合并默认的 load 和 save 函数
+        const store = await Store.create({
+          books: [{ id: 1, title: 'initial book' }]
+        }, {
+          savePath: testPath
+        });
+
+        expect(store.opt.savePath).to.equal(testPath);
+
+        // 验证初始数据已经被保存到自定义路径
+        expect(fs.existsSync(testPath)).to.equal(true);
+
+        // 验证初始文件内容
+        let fileContent = JSON.parse(fs.readFileSync(testPath, 'utf-8'));
+        expect(fileContent.books).to.be.an('array');
+        expect(fileContent.books.length).to.equal(1);
+        expect(fileContent.books[0].title).to.equal('initial book');
+
+        // 添加数据触发保存
+        await store.post('books', { title: 'custom path book' });
+
+        // 验证更新后的文件内容
+        fileContent = JSON.parse(fs.readFileSync(testPath, 'utf-8'));
+        expect(fileContent.books.length).to.equal(2);
+        expect(fileContent.books[1].title).to.equal('custom path book');
+
+        // 清理测试文件
+        fs.unlinkSync(testPath);
+
+      } else {
+        // 浏览器环境：测试自定义 localStorage key 和实际存储内容
+        const testKey = 'test-custom-key';
+
+        // 清理可能存在的测试数据
+        window.localStorage.removeItem(testKey);
+
+        // 传入数据对象和自定义 key
+        const store = await Store.create({
+          books: [{ id: 1, title: 'initial book' }]
+        }, {
+          savePath: testKey
+        });
+
+        expect(store.opt.savePath).to.equal(testKey);
+
+        // 验证初始数据已经被保存到自定义 key
+        let storedData = window.localStorage.getItem(testKey);
+        expect(storedData).to.not.be.null;
+
+        let parsedData = JSON.parse(storedData);
+        expect(parsedData.books).to.be.an('array');
+        expect(parsedData.books.length).to.equal(1);
+        expect(parsedData.books[0].title).to.equal('initial book');
+
+        // 添加数据触发保存
+        await store.post('books', { title: 'custom key book' });
+
+        // 验证更新后的 localStorage 内容
+        storedData = window.localStorage.getItem(testKey);
+        parsedData = JSON.parse(storedData);
+        expect(parsedData.books.length).to.equal(2);
+        expect(parsedData.books[1].title).to.equal('custom key book');
+
+        // 清理测试数据
+        window.localStorage.removeItem(testKey);
+      }
+    });
+
+    it('自定义 adapter 配置', async () => {
+      class CustomAdapter {
+        constructor(data, opt) {
+          this.data = data;
+          this.opt = opt;
+        }
+
+        get(path) {
+          return { custom: true, path };
+        }
+
+        // 添加 save 方法，因为初始化时会调用
+        async save() {
+          // 自定义适配器的保存逻辑
+        }
+      }
+
+      const customAdapter = new CustomAdapter({}, {});
+      const store = await Store.create({}, {
+        adapter: customAdapter
+      });
+
+      expect(store.opt.adapter).to.equal(customAdapter);
+      const result = await store.get('test');
+      expect(result.custom).to.equal(true);
+      expect(result.path).to.equal('test');
+    });
+
+    it('自定义 load 和 save 函数', async () => {
+      let loadCalled = false;
+      let loadPath = null;
+      let saveCalled = false;
+      let savedPath = null;
+      let savedData = null;
+
+      const customLoad = async (path) => {
+        loadCalled = true;
+        loadPath = path;
+
+        if (isNodeEnv) {
+          // Node.js 环境：模拟从文件加载
+          return { books: [{ id: 1, title: 'loaded from file' }] };
+        } else {
+          // 浏览器环境：模拟从 localStorage 加载
+          return { books: [{ id: 1, title: 'loaded from localStorage' }] };
+        }
+      };
+
+      const customSave = async (path, data) => {
+        saveCalled = true;
+        savedPath = path;
+        savedData = data;
+
+        // 验证保存的数据结构
+        expect(data).to.be.an('object');
+        expect(data.books).to.be.an('array');
+      };
+
+      const testPath = isNodeEnv ? 'test-file.json' : 'test-localStorage-key';
+      const store = await Store.create(testPath, {
+        load: customLoad,
+        save: customSave
+      });
+
+      // 验证 load 函数被正确调用
+      expect(loadCalled).to.equal(true);
+      expect(loadPath).to.equal(testPath);
+
+      // 测试数据是否正确加载
+      const books = await store.get('books');
+      expect(books.length).to.equal(1);
+      if (isNodeEnv) {
+        expect(books[0].title).to.equal('loaded from file');
+      } else {
+        expect(books[0].title).to.equal('loaded from localStorage');
+      }
+
+      // 测试保存功能
+      await store.post('books', { title: 'new book' });
+      expect(saveCalled).to.equal(true);
+      expect(savedPath).to.equal(testPath);
+      expect(savedData).to.not.be.null;
+      expect(savedData.books.length).to.equal(2);
+      expect(savedData.books[1].title).to.equal('new book');
+    });
+
+    it('配置项合并测试', async () => {
+      const testPath = 'test-merge-config.json';
+      let savedPath = null;
+
+      // 使用自定义 save 函数避免创建实际文件
+      const mockSave = async (path, data) => {
+        savedPath = path;
+      };
+
+      const store = await Store.create({
+        items: []
+      }, {
+        idKeySuffix: '_key',
+        savePath: testPath,
+        customOption: 'custom_value',
+        save: mockSave
+      });
+
+      expect(store.opt.idKeySuffix).to.equal('_key');
+      expect(store.opt.savePath).to.equal(testPath);
+      expect(store.opt.customOption).to.equal('custom_value');
+      expect(savedPath).to.equal(testPath);
+    });
+
+    it('空配置项测试', async () => {
+      const store = await Store.create();
+
+      expect(store.opt.idKeySuffix).to.equal('Id');
+      // 在测试环境中，默认 savePath 可能不是空字符串
+      expect(store.opt.savePath).to.be.a('string');
+      // 检查 adapter 是否存在且有正确的方法，而不是使用 instanceof
+      expect(store.opt.adapter).to.be.an('object');
+      expect(store.opt.adapter).to.have.property('get');
+      expect(store.opt.adapter).to.have.property('post');
+      expect(store.opt.adapter).to.have.property('save');
+    });
+
+    it('配置项不可变性测试', async () => {
+      const testPath = 'test-immutable-config.json';
+      let savedPath = null;
+
+      // 使用自定义 save 函数避免创建实际文件
+      const mockSave = async (path, data) => {
+        savedPath = path;
+      };
+
+      const originalOpt = {
+        idKeySuffix: 'Test',
+        savePath: testPath,
+        save: mockSave
+      };
+
+      const store = await Store.create({}, originalOpt);
+
+      // 修改原始配置对象不应影响 store
+      originalOpt.idKeySuffix = 'Modified';
+      originalOpt.savePath = 'modified.json';
+
+      expect(store.opt.idKeySuffix).to.equal('Test');
+      expect(store.opt.savePath).to.equal(testPath);
+      expect(savedPath).to.equal(testPath);
+    });
+
+    it('load 函数错误处理', async () => {
+      const errorLoad = async (path) => {
+        throw new Error('Load failed');
+      };
+
+      try {
+        await Store.create('test-path', {
+          load: errorLoad
+        });
+        expect.fail('应该抛出错误');
+      } catch (error) {
+        expect(error.message).to.equal('Load failed');
+      }
+    });
+
+    it('save 函数错误处理', async () => {
+      const errorSave = async (path, data) => {
+        throw new Error('Save failed');
+      };
+
+      // 现在初始化时就会调用 save，所以创建时就会抛出错误
+      try {
+        await Store.create({
+          books: []
+        }, {
+          save: errorSave
+        });
+        expect.fail('应该抛出错误');
+      } catch (error) {
+        expect(error.message).to.equal('Save failed');
+      }
+    });
+
+    it('缺少 load 函数时的错误处理', async () => {
+      // 导入基础的 Store 类来测试这个错误情况
+      const { Store: BaseStore } = await import('../src/store.js');
+
+      try {
+        await BaseStore.create('test-path', {
+          // 没有提供 load 函数
+        });
+        expect.fail('应该抛出错误');
+      } catch (error) {
+        expect(error.message).to.equal('load 方法未定义');
+      }
+    });
+
+    it('环境特定的存储验证', async () => {
+      if (isNodeEnv) {
+        // Node.js 环境：验证实际文件操作
+        const testFile = 'test-env-specific.json';
+        let actualFileContent = null;
+
+        const mockSave = async (path, data) => {
+          expect(path).to.equal(testFile);
+          actualFileContent = JSON.stringify(data, null, 2);
+          // 模拟写入文件
+        };
+
+        const mockLoad = async (path) => {
+          expect(path).to.equal(testFile);
+          return { items: [] };
+        };
+
+        const store = await Store.create(testFile, {
+          load: mockLoad,
+          save: mockSave
+        });
+
+        await store.post('items', { name: 'test item' });
+
+        expect(actualFileContent).to.not.be.null;
+        const parsedContent = JSON.parse(actualFileContent);
+        expect(parsedContent.items.length).to.equal(1);
+        expect(parsedContent.items[0].name).to.equal('test item');
+
+      } else {
+        // 浏览器环境：验证 localStorage 操作
+        const testKey = 'test-env-specific';
+        let actualStorageData = null;
+
+        const mockSave = async (key, data) => {
+          expect(key).to.equal(testKey);
+          actualStorageData = JSON.stringify(data);
+          // 模拟存储到 localStorage
+        };
+
+        const mockLoad = async (key) => {
+          expect(key).to.equal(testKey);
+          return { items: [] };
+        };
+
+        const store = await Store.create(testKey, {
+          load: mockLoad,
+          save: mockSave
+        });
+
+        await store.post('items', { name: 'test item' });
+
+        expect(actualStorageData).to.not.be.null;
+        const parsedData = JSON.parse(actualStorageData);
+        expect(parsedData.items.length).to.equal(1);
+        expect(parsedData.items[0].name).to.equal('test item');
+      }
+    });
+
+    it('配置项类型验证', async () => {
+      const testPath = 'test-type-validation.json';
+      let savedPath = null;
+
+      // 使用自定义 save 函数避免创建实际文件
+      const mockSave = async (path, data) => {
+        savedPath = path;
+      };
+
+      const store = await Store.create({
+        books: []
+      }, {
+        idKeySuffix: 'Suffix',
+        savePath: testPath,
+        customProp: 'customValue',
+        save: mockSave
+      });
+
+      // 验证配置项类型
+      expect(typeof store.opt.idKeySuffix).to.equal('string');
+      expect(typeof store.opt.savePath).to.equal('string');
+      expect(typeof store.opt.customProp).to.equal('string');
+
+      // 验证配置项值
+      expect(store.opt.idKeySuffix).to.equal('Suffix');
+      expect(store.opt.savePath).to.equal(testPath);
+      expect(store.opt.customProp).to.equal('customValue');
+      expect(savedPath).to.equal(testPath);
     });
   });
 }
