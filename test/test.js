@@ -25,7 +25,7 @@ const envMap = {
     const create = (await import(path)).default;
     testMain({ create }, {
       afterEach() {
-        const savePath = `js-store.json`
+        const savePath = `js-lite-rest.json`
         if (fs.existsSync(savePath)) fs.unlinkSync(savePath);
       }
     });
@@ -36,7 +36,7 @@ const envMap = {
     const create = (await import(path)).default;
     testMain({ create }, {
       afterEach() {
-        const savePath = `js-store`
+        const savePath = `js-lite-rest`
         window.localStorage.removeItem(savePath);
       }
     });
@@ -52,8 +52,8 @@ if (mode === 'dev') {
   }
 } else if (mode === 'build') {
   if (env === 'node') {
-    await envMap[env]('../src/store.node.js')
+    await envMap[env]('../dist/js-lite-rest.node.esm.js')
   } else if (env === 'browser') {
-    await envMap[env]('../dist/js-store.browser.esm.js')
+    await envMap[env]('../dist/js-lite-rest.browser.esm.js')
   }
 } 

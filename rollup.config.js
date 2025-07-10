@@ -7,8 +7,8 @@ export default defineConfig([
   {
     input: 'src/store.node.js',
     output: [
-      { file: 'dist/js-store.node.esm.js', format: 'esm' },
-      { file: 'dist/js-store.node.cjs.js', format: 'cjs' },
+      { file: 'dist/js-lite-rest.node.esm.js', format: 'esm' },
+      { file: 'dist/js-lite-rest.node.cjs.js', format: 'cjs' },
     ],
     external: ['fs'],
     plugins: [nodeResolve(), commonjs()],
@@ -17,8 +17,8 @@ export default defineConfig([
   {
     input: 'src/store.browser.js',
     output: [
-      { file: 'dist/js-store.browser.esm.js', format: 'esm' },
-      { file: 'dist/js-store.browser.umd.js', format: 'umd', name: 'BrowserStore' },
+      { file: 'dist/js-lite-rest.browser.esm.js', format: 'esm' },
+      { file: 'dist/js-lite-rest.browser.umd.js', format: 'umd', name: 'JsLiteRest' },
     ],
     external: [],
     plugins: [nodeResolve(), commonjs()],

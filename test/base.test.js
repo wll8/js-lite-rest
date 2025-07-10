@@ -914,7 +914,7 @@ export function testMain(Store, opt = {}) {
     it('默认存储路径验证', async () => {
       if (isNodeEnv) {
         // Node.js 环境：验证默认文件路径和实际文件内容
-        const defaultPath = 'js-store.json';
+        const defaultPath = 'js-lite-rest.json';
 
         // 清理可能存在的测试文件
         if (fs.existsSync(defaultPath)) {
@@ -950,7 +950,7 @@ export function testMain(Store, opt = {}) {
 
       } else {
         // 浏览器环境：验证默认 localStorage key 和实际存储内容
-        const defaultKey = 'js-store';
+        const defaultKey = 'js-lite-rest';
 
         // 清理可能存在的测试数据
         window.localStorage.removeItem(defaultKey);

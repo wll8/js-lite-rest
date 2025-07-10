@@ -1,9 +1,9 @@
-// js-store 主类实现
+// js-lite-rest 主类实现
 
 function getBaseOpt(opt = {}) {
   const newOpt = {
     idKeySuffix: 'Id',
-    savePath: typeof window === 'undefined' ? `js-store.json` : `js-store`,
+    savePath: typeof window === 'undefined' ? `js-lite-rest.json` : `js-lite-rest`,
     ...opt,
   }
   return newOpt

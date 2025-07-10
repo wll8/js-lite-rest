@@ -1,0 +1,60 @@
+# 源代码目录（只发布构建后的文件）
+src/
+
+# 测试文件
+test/
+*.test.js
+*.spec.js
+
+# 开发工具配置
+.eslintrc.js
+.mocharc.json
+rollup.config.js
+pnpm-workspace.yaml
+
+# 脚本目录
+scripts/
+
+# 开发依赖和锁文件
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# 版本控制
+.git/
+.gitignore
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 临时文件
+.tmp/
+.cache/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 测试覆盖率
+coverage/
+
+# 演示文件
+demo/
+
+# 构建过程中的临时文件
+dist/assets/
+dist/mochawesome-results.*
+
+# 只保留必要的构建文件
+!dist/js-lite-rest.*.js
+!dist/index.d.ts

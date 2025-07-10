@@ -7,13 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      chai-as-promised:
-        specifier: ^8.0.1
-        version: 8.0.1(chai@4.5.0)
-      jsdom:
-        specifier: ^26.1.0
-        version: 26.1.0
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^2.27.3
@@ -27,6 +20,12 @@ importers:
       chai:
         specifier: ^4.5.0
         version: 4.5.0
+      chai-as-promised:
+        specifier: ^8.0.1
+        version: 8.0.1(chai@4.5.0)
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0
       mocha:
         specifier: ^10.8.2
         version: 10.8.2
@@ -39,6 +38,12 @@ importers:
       rollup:
         specifier: ^4.44.2
         version: 4.44.2
+
+  demo:
+    dependencies:
+      js-lite-rest:
+        specifier: file:js-lite-rest-1.0.0.tgz
+        version: file:demo/js-lite-rest-1.0.0.tgz
 
 packages:
 
@@ -1570,6 +1575,10 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
+
+  js-lite-rest@file:demo/js-lite-rest-1.0.0.tgz:
+    resolution: {integrity: sha512-CTviZcZOj6KfT2Okt+sZsVnn6Gy3/1KGL0OsWCPcPuiyAs0EXAPvLRsJGj8ODD2zV9P45dryLFemRheAPGKZzA==, tarball: file:demo/js-lite-rest-1.0.0.tgz}
+    version: 1.0.0
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -3952,6 +3961,8 @@ snapshots:
   is-unicode-supported@0.1.0: {}
 
   isexe@2.0.0: {}
+
+  js-lite-rest@file:demo/js-lite-rest-1.0.0.tgz: {}
 
   js-tokens@4.0.0: {}
 
