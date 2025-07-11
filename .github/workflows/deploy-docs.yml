@@ -52,7 +52,10 @@ jobs:
             Windows-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          # 确保 Rollup 原生模块正确安装
+          pnpm rebuild rollup
 
       - name: Build library
         run: pnpm build
@@ -62,6 +65,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
+      - name: Clean VitePress temp files
+        run: Remove-Item -Recurse -Force docs\.vitepress\.temp -ErrorAction SilentlyContinue
+        shell: pwsh
 
       - name: Build documentation
         run: pnpm docs:build
