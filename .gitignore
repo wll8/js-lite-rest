@@ -1,3 +1,5 @@
 node_modules
 dist
-demo
+docs/public/test-results
+cache
+ai.md

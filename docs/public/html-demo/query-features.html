@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查询功能 - js-lite-rest</title>
+    <!-- UnoCSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+    <!-- js-lite-rest UMD -->
+    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <nav class="mb-4">
+                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">查询功能</h1>
+            <p class="text-gray-600">演示 js-lite-rest 的高级查询功能，包括过滤、排序、分页、全文搜索等</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 查询控制面板 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-6 sticky top-8">
+                    <h2 class="text-xl font-semibold mb-4">查询控制</h2>
+                    
+                    <!-- 基础过滤 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">基础过滤</h3>
+                        <div class="space-y-3">
+                            <select id="categoryFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">所有分类</option>
+                                <option value="电子产品">电子产品</option>
+                                <option value="服装">服装</option>
+                                <option value="食品">食品</option>
+                                <option value="图书">图书</option>
+                                <option value="家居">家居</option>
+                            </select>
+                            
+                            <select id="brandFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">所有品牌</option>
+                                <option value="Apple">Apple</option>
+                                <option value="Samsung">Samsung</option>
+                                <option value="华为">华为</option>
+                                <option value="小米">小米</option>
+                                <option value="Nike">Nike</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 价格范围 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">价格范围</h3>
+                        <div class="space-y-2">
+                            <div class="flex space-x-2">
+                                <input type="number" id="minPrice" placeholder="最低价格" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="number" id="maxPrice" placeholder="最高价格" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 评分过滤 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">最低评分</h3>
+                        <select id="ratingFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">不限</option>
+                            <option value="4.5">4.5 星以上</option>
+                            <option value="4.0">4.0 星以上</option>
+                            <option value="3.5">3.5 星以上</option>
+                            <option value="3.0">3.0 星以上</option>
+                        </select>
+                    </div>
+
+                    <!-- 排序 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">排序方式</h3>
+                        <select id="sortBy" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">默认排序</option>
+                            <option value="price:asc">价格：低到高</option>
+                            <option value="price:desc">价格：高到低</option>
+                            <option value="rating:desc">评分：高到低</option>
+                            <option value="name:asc">名称：A-Z</option>
+                            <option value="createdAt:desc">时间：最新</option>
+                        </select>
+                    </div>
+
+                    <!-- 分页 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">分页设置</h3>
+                        <div class="space-y-2">
+                            <select id="pageSize" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="10">每页 10 条</option>
+                                <option value="20" selected>每页 20 条</option>
+                                <option value="50">每页 50 条</option>
+                                <option value="100">每页 100 条</option>
+                            </select>
+                            <div class="flex space-x-2">
+                                <button onclick="changePage(-1)" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                                    上一页
+                                </button>
+                                <button onclick="changePage(1)" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                                    下一页
+                                </button>
+                            </div>
+                            <div id="pageInfo" class="text-sm text-gray-600 text-center">
+                                第 1 页，共 0 页
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 全文搜索 -->
+                    <div class="mb-6">
+                        <h3 class="font-medium mb-3">全文搜索</h3>
+                        <input type="text" id="searchQuery" placeholder="搜索产品..." 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="space-y-2">
+                        <button onclick="executeQuery()" 
+                                class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            执行查询
+                        </button>
+                        <button onclick="resetFilters()" 
+                                class="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                            重置筛选
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 查询结果 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">查询结果</h2>
+                        <div class="flex items-center space-x-4">
+                            <span id="resultCount" class="text-sm text-gray-500">共 0 个结果</span>
+                            <span id="queryTime" class="text-sm text-gray-500"></span>
+                        </div>
+                    </div>
+                    
+                    <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 产品列表将在这里显示 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 查询历史 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">查询历史</h2>
+                <button onclick="clearQueryHistory()" class="text-sm text-red-600 hover:text-red-800">清空历史</button>
+            </div>
+            <div id="queryHistory" class="space-y-2 max-h-48 overflow-y-auto">
+                <!-- 查询历史将在这里显示 -->
+            </div>
+        </div>
+
+        <!-- 查询统计 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">查询统计</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="queryStats">
+                <!-- 统计数据将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let store;
+        let currentPage = 1;
+        let totalPages = 1;
+        let queryHistory = [];
+        let queryStats = {
+            totalQueries: 0,
+            avgQueryTime: 0,
+            totalResults: 0,
+            fastestQuery: Infinity,
+            slowestQuery: 0
+        };
+        
+        // 初始化 store
+        async function initStore() {
+            try {
+                store = await createStore({
+                    products: generateSampleData()
+                });
+                
+                console.log('查询功能演示初始化成功');
+                executeQuery(); // 初始查询
+                updateQueryStats();
+            } catch (error) {
+                console.error('查询功能演示初始化失败:', error);
+            }
+        }
+
+        // 生成示例数据
+        function generateSampleData() {
+            const categories = ['电子产品', '服装', '食品', '图书', '家居'];
+            const brands = ['Apple', 'Samsung', '华为', '小米', 'Nike', 'Adidas', '联想', 'Dell'];
+            const adjectives = ['高端', '经典', '时尚', '实用', '创新', '专业', '舒适', '耐用'];
+            const products = [];
+            
+            for (let i = 1; i <= 200; i++) {
+                const category = categories[Math.floor(Math.random() * categories.length)];
+                const brand = brands[Math.floor(Math.random() * brands.length)];
+                const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+                
+                products.push({
+                    id: i,
+                    name: `${adjective}${category} ${i}`,
+                    brand: brand,
+                    category: category,
+                    price: Math.floor(Math.random() * 9900) + 100,
+                    rating: (Math.random() * 2 + 3).toFixed(1), // 3.0 - 5.0
+                    stock: Math.floor(Math.random() * 1000),
+                    description: `这是一个${adjective}的${category}，由${brand}品牌制造，具有优秀的品质和性能。`,
+                    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+                    tags: [category, brand, adjective]
+                });
+            }
+            
+            return products;
+        }
+
+        // 构建查询参数
+        function buildQuery() {
+            const query = {};
+            
+            // 基础过滤
+            const category = document.getElementById('categoryFilter').value;
+            if (category) query.category = category;
+            
+            const brand = document.getElementById('brandFilter').value;
+            if (brand) query.brand = brand;
+            
+            // 价格范围
+            const minPrice = document.getElementById('minPrice').value;
+            if (minPrice) query.price_gte = parseInt(minPrice);
+            
+            const maxPrice = document.getElementById('maxPrice').value;
+            if (maxPrice) query.price_lte = parseInt(maxPrice);
+            
+            // 评分过滤
+            const rating = document.getElementById('ratingFilter').value;
+            if (rating) query.rating_gte = parseFloat(rating);
+            
+            // 排序
+            const sortBy = document.getElementById('sortBy').value;
+            if (sortBy) {
+                const [field, order] = sortBy.split(':');
+                query._sort = field;
+                query._order = order;
+            }
+            
+            // 分页
+            const pageSize = parseInt(document.getElementById('pageSize').value);
+            query._limit = pageSize;
+            query._page = currentPage;
+            
+            // 全文搜索
+            const searchQuery = document.getElementById('searchQuery').value.trim();
+            if (searchQuery) query._q = searchQuery;
+            
+            return query;
+        }
+
+        // 执行查询
+        async function executeQuery() {
+            const startTime = Date.now();
+            
+            try {
+                const query = buildQuery();
+                const results = await store.get('products', query);
+                const queryTime = Date.now() - startTime;
+                
+                displayResults(results);
+                updatePageInfo(results);
+                addToQueryHistory(query, results.length, queryTime);
+                updateQueryStats(queryTime, results.length);
+                
+                document.getElementById('queryTime').textContent = `查询耗时: ${queryTime}ms`;
+                
+            } catch (error) {
+                console.error('查询失败:', error);
+                document.getElementById('productGrid').innerHTML = 
+                    '<div class="col-span-full text-red-500 text-center py-8">查询失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 显示查询结果
+        function displayResults(results) {
+            const productGrid = document.getElementById('productGrid');
+            const resultCount = document.getElementById('resultCount');
+
+            resultCount.textContent = `共 ${results.length} 个结果`;
+
+            if (results.length === 0) {
+                productGrid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-8">没有找到匹配的产品</div>';
+                return;
+            }
+
+            productGrid.innerHTML = results.map(product => `
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-800 text-sm">${product.name}</h3>
+                        <span class="text-lg font-bold text-green-600">¥${product.price}</span>
+                    </div>
+                    <div class="space-y-1 text-xs text-gray-600">
+                        <p>品牌: ${product.brand}</p>
+                        <p>分类: ${product.category}</p>
+                        <p>评分: ${product.rating} ⭐</p>
+                        <p>库存: ${product.stock}</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 line-clamp-2">${product.description}</p>
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        ${product.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 更新分页信息
+        function updatePageInfo(results) {
+            const pageSize = parseInt(document.getElementById('pageSize').value);
+            // 这里简化处理，实际应该从服务器获取总数
+            totalPages = Math.ceil(200 / pageSize); // 假设总共200条数据
+
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
+        }
+
+        // 翻页
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                executeQuery();
+            }
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('brandFilter').value = '';
+            document.getElementById('minPrice').value = '';
+            document.getElementById('maxPrice').value = '';
+            document.getElementById('ratingFilter').value = '';
+            document.getElementById('sortBy').value = '';
+            document.getElementById('searchQuery').value = '';
+            currentPage = 1;
+            executeQuery();
+        }
+
+        // 添加到查询历史
+        function addToQueryHistory(query, resultCount, queryTime) {
+            const historyItem = {
+                query: JSON.stringify(query),
+                resultCount,
+                queryTime,
+                timestamp: new Date().toLocaleTimeString()
+            };
+
+            queryHistory.unshift(historyItem);
+            if (queryHistory.length > 10) {
+                queryHistory = queryHistory.slice(0, 10);
+            }
+
+            displayQueryHistory();
+        }
+
+        // 显示查询历史
+        function displayQueryHistory() {
+            const historyContainer = document.getElementById('queryHistory');
+
+            if (queryHistory.length === 0) {
+                historyContainer.innerHTML = '<div class="text-gray-500 text-center py-4">暂无查询历史</div>';
+                return;
+            }
+
+            historyContainer.innerHTML = queryHistory.map((item, index) => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm">
+                    <div class="flex-1">
+                        <span class="font-mono text-xs text-gray-600">${item.query}</span>
+                    </div>
+                    <div class="flex space-x-4 text-xs text-gray-500">
+                        <span>${item.resultCount} 结果</span>
+                        <span>${item.queryTime}ms</span>
+                        <span>${item.timestamp}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 清空查询历史
+        function clearQueryHistory() {
+            queryHistory = [];
+            displayQueryHistory();
+        }
+
+        // 更新查询统计
+        function updateQueryStats(queryTime = null, resultCount = null) {
+            if (queryTime !== null) {
+                queryStats.totalQueries++;
+                queryStats.totalResults += resultCount;
+                queryStats.avgQueryTime = Math.round(
+                    (queryStats.avgQueryTime * (queryStats.totalQueries - 1) + queryTime) / queryStats.totalQueries
+                );
+                queryStats.fastestQuery = Math.min(queryStats.fastestQuery, queryTime);
+                queryStats.slowestQuery = Math.max(queryStats.slowestQuery, queryTime);
+            }
+
+            const statsContainer = document.getElementById('queryStats');
+            const stats = [
+                { label: '总查询数', value: queryStats.totalQueries, color: 'blue' },
+                { label: '平均耗时', value: `${queryStats.avgQueryTime}ms`, color: 'green' },
+                { label: '最快查询', value: queryStats.fastestQuery === Infinity ? '0ms' : `${queryStats.fastestQuery}ms`, color: 'purple' },
+                { label: '最慢查询', value: `${queryStats.slowestQuery}ms`, color: 'orange' }
+            ];
+
+            statsContainer.innerHTML = stats.map(stat => `
+                <div class="bg-${stat.color}-50 border border-${stat.color}-200 rounded-lg p-4 text-center">
+                    <div class="text-xl font-bold text-${stat.color}-600">${stat.value}</div>
+                    <div class="text-sm text-${stat.color}-800">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // 监听输入变化，实时查询
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = ['categoryFilter', 'brandFilter', 'minPrice', 'maxPrice', 'ratingFilter', 'sortBy', 'pageSize'];
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('change', () => {
+                        currentPage = 1; // 重置到第一页
+                        executeQuery();
+                    });
+                }
+            });
+
+            // 搜索框延迟查询
+            let searchTimeout;
+            const searchInput = document.getElementById('searchQuery');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        currentPage = 1;
+                        executeQuery();
+                    }, 500);
+                });
+            }
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('load', initStore);
+    </script>
+</body>
+</html>

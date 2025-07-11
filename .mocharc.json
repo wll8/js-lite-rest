@@ -4,7 +4,7 @@
   "timeout": 0,
   "reporter": "mochawesome",
   "reporter-option": [
-    "reportDir=dist",
+    "reportDir=docs/public/test-results",
     "reportFilename=mochawesome-results"
   ]
 } 

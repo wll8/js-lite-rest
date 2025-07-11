@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性能测试 - js-lite-rest</title>
+    <!-- UnoCSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+    <!-- js-lite-rest UMD -->
+    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <nav class="mb-4">
+                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">性能测试</h1>
+            <p class="text-gray-600">测试 js-lite-rest 在大量数据操作下的性能表现</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 测试控制面板 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">测试控制</h2>
+                
+                <!-- 测试配置 -->
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">数据量设置</label>
+                        <select id="dataSize" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="100">100 条记录</option>
+                            <option value="500">500 条记录</option>
+                            <option value="1000" selected>1000 条记录</option>
+                            <option value="5000">5000 条记录</option>
+                            <option value="10000">10000 条记录</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">测试类型</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="testCreate" checked class="mr-2">
+                                <span>批量创建测试</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="testRead" checked class="mr-2">
+                                <span>批量读取测试</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="testUpdate" checked class="mr-2">
+                                <span>批量更新测试</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="testDelete" checked class="mr-2">
+                                <span>批量删除测试</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="testQuery" checked class="mr-2">
+                                <span>复杂查询测试</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 测试按钮 -->
+                <div class="space-y-3">
+                    <button onclick="runPerformanceTest()" id="runTestBtn"
+                            class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-medium">
+                        开始性能测试
+                    </button>
+                    
+                    <button onclick="clearTestData()" 
+                            class="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors">
+                        清空测试数据
+                    </button>
+                    
+                    <button onclick="clearResults()" 
+                            class="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                        清空测试结果
+                    </button>
+                </div>
+
+                <!-- 当前状态 -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-medium mb-2">当前状态</h3>
+                    <div id="currentStatus" class="text-sm text-gray-600">
+                        等待开始测试...
+                    </div>
+                    <div class="mt-2">
+                        <div class="bg-gray-200 rounded-full h-2">
+                            <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 测试结果 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">测试结果</h2>
+                <div id="testResults" class="space-y-4">
+                    <div class="text-gray-500 text-center py-8">
+                        暂无测试结果
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细统计 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">详细统计</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="detailedStats">
+                <!-- 统计数据将在这里显示 -->
+            </div>
+        </div>
+
+        <!-- 测试日志 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">测试日志</h2>
+                <button onclick="clearLog()" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
+            </div>
+            <div id="testLog" class="bg-gray-50 p-4 rounded-md h-64 overflow-y-auto font-mono text-sm">
+                <!-- 测试日志将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let store;
+        let testResults = [];
+        
+        // 初始化 store
+        async function initStore() {
+            try {
+                // 每次开始前删除当前 key 的数据
+                const testKey = 'performance-test-data';
+                if (typeof window !== 'undefined' && window.localStorage) {
+                    window.localStorage.removeItem(testKey);
+                }
+                
+                store = await createStore({}, { savePath: testKey });
+                log('性能测试环境初始化成功');
+            } catch (error) {
+                log('性能测试环境初始化失败: ' + error.message, 'error');
+            }
+        }
+
+        // 日志记录
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 
+                              type === 'warning' ? 'text-yellow-600' : 'text-blue-600';
+            logElement.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // 清空日志
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+        }
+
+        // 更新状态
+        function updateStatus(message, progress = 0) {
+            document.getElementById('currentStatus').textContent = message;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // 生成测试数据
+        function generateTestData(count) {
+            const data = [];
+            const categories = ['电子产品', '服装', '食品', '图书', '家居', '运动', '美妆', '汽车'];
+            const brands = ['Apple', 'Samsung', 'Nike', '阿迪达斯', '华为', '小米', 'OPPO', 'vivo'];
+            
+            for (let i = 1; i <= count; i++) {
+                data.push({
+                    name: `测试产品 ${i}`,
+                    price: Math.floor(Math.random() * 10000) + 100,
+                    category: categories[Math.floor(Math.random() * categories.length)],
+                    brand: brands[Math.floor(Math.random() * brands.length)],
+                    stock: Math.floor(Math.random() * 1000),
+                    rating: (Math.random() * 5).toFixed(1),
+                    description: `这是测试产品 ${i} 的详细描述，包含了产品的各种特性和功能介绍。`,
+                    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString()
+                });
+            }
+            
+            return data;
+        }
+
+        // 运行性能测试
+        async function runPerformanceTest() {
+            const runTestBtn = document.getElementById('runTestBtn');
+            runTestBtn.disabled = true;
+            runTestBtn.textContent = '测试进行中...';
+            
+            try {
+                testResults = [];
+                const dataSize = parseInt(document.getElementById('dataSize').value);
+                
+                log(`开始性能测试，数据量: ${dataSize} 条`, 'info');
+                updateStatus('准备测试数据...', 5);
+                
+                // 清空现有数据
+                await clearTestData();
+                
+                const testData = generateTestData(dataSize);
+                let currentProgress = 10;
+                
+                // 批量创建测试
+                if (document.getElementById('testCreate').checked) {
+                    updateStatus('执行批量创建测试...', currentProgress);
+                    const createResult = await testBatchCreate(testData);
+                    testResults.push(createResult);
+                    currentProgress += 18;
+                }
+                
+                // 批量读取测试
+                if (document.getElementById('testRead').checked) {
+                    updateStatus('执行批量读取测试...', currentProgress);
+                    const readResult = await testBatchRead();
+                    testResults.push(readResult);
+                    currentProgress += 18;
+                }
+                
+                // 复杂查询测试
+                if (document.getElementById('testQuery').checked) {
+                    updateStatus('执行复杂查询测试...', currentProgress);
+                    const queryResult = await testComplexQuery();
+                    testResults.push(queryResult);
+                    currentProgress += 18;
+                }
+                
+                // 批量更新测试
+                if (document.getElementById('testUpdate').checked) {
+                    updateStatus('执行批量更新测试...', currentProgress);
+                    const updateResult = await testBatchUpdate();
+                    testResults.push(updateResult);
+                    currentProgress += 18;
+                }
+                
+                // 批量删除测试
+                if (document.getElementById('testDelete').checked) {
+                    updateStatus('执行批量删除测试...', currentProgress);
+                    const deleteResult = await testBatchDelete();
+                    testResults.push(deleteResult);
+                    currentProgress += 18;
+                }
+                
+                updateStatus('测试完成', 100);
+                displayResults();
+                displayDetailedStats();
+                log('性能测试完成', 'success');
+                
+            } catch (error) {
+                log('性能测试失败: ' + error.message, 'error');
+                updateStatus('测试失败', 0);
+            } finally {
+                runTestBtn.disabled = false;
+                runTestBtn.textContent = '开始性能测试';
+            }
+        }
+
+        // 批量创建测试
+        async function testBatchCreate(testData) {
+            const startTime = Date.now();
+            
+            try {
+                // 分批创建以避免一次性创建太多数据
+                const batchSize = 100;
+                let created = 0;
+                
+                for (let i = 0; i < testData.length; i += batchSize) {
+                    const batch = testData.slice(i, i + batchSize);
+                    await store.post('products', batch);
+                    created += batch.length;
+                    log(`已创建 ${created}/${testData.length} 条记录`);
+                }
+                
+                const duration = Date.now() - startTime;
+                const throughput = Math.round(testData.length / (duration / 1000));
+                
+                log(`批量创建完成: ${testData.length} 条记录，耗时 ${duration}ms，吞吐量 ${throughput} 条/秒`, 'success');
+                
+                return {
+                    name: '批量创建',
+                    count: testData.length,
+                    duration,
+                    throughput,
+                    success: true
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`批量创建失败: ${error.message}`, 'error');
+                return {
+                    name: '批量创建',
+                    count: testData.length,
+                    duration,
+                    throughput: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // 批量读取测试
+        async function testBatchRead() {
+            const startTime = Date.now();
+            
+            try {
+                const products = await store.get('products');
+                const duration = Date.now() - startTime;
+                const throughput = Math.round(products.length / (duration / 1000));
+                
+                log(`批量读取完成: ${products.length} 条记录，耗时 ${duration}ms，吞吐量 ${throughput} 条/秒`, 'success');
+                
+                return {
+                    name: '批量读取',
+                    count: products.length,
+                    duration,
+                    throughput,
+                    success: true
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`批量读取失败: ${error.message}`, 'error');
+                return {
+                    name: '批量读取',
+                    count: 0,
+                    duration,
+                    throughput: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // 复杂查询测试
+        async function testComplexQuery() {
+            const startTime = Date.now();
+
+            try {
+                // 执行多种复杂查询
+                const queries = [
+                    { price_gte: 1000, price_lte: 5000 }, // 价格范围查询
+                    { category: '电子产品', _sort: 'price', _order: 'desc' }, // 分类排序查询
+                    { brand_like: 'Apple', rating_gte: 4.0 }, // 模糊查询 + 评分过滤
+                    { _q: '测试', _limit: 50 }, // 全文搜索
+                    { stock_gte: 100, _sort: 'createdAt', _order: 'desc', _limit: 20 } // 库存过滤 + 时间排序
+                ];
+
+                let totalResults = 0;
+                for (const query of queries) {
+                    const results = await store.get('products', query);
+                    totalResults += results.length;
+                    log(`查询 ${JSON.stringify(query)} 返回 ${results.length} 条结果`);
+                }
+
+                const duration = Date.now() - startTime;
+                const avgDuration = Math.round(duration / queries.length);
+
+                log(`复杂查询完成: ${queries.length} 个查询，总计 ${totalResults} 条结果，平均耗时 ${avgDuration}ms`, 'success');
+
+                return {
+                    name: '复杂查询',
+                    count: queries.length,
+                    duration,
+                    throughput: Math.round(queries.length / (duration / 1000)),
+                    success: true,
+                    details: `${queries.length} 个查询，${totalResults} 条结果`
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`复杂查询失败: ${error.message}`, 'error');
+                return {
+                    name: '复杂查询',
+                    count: 0,
+                    duration,
+                    throughput: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // 批量更新测试
+        async function testBatchUpdate() {
+            const startTime = Date.now();
+
+            try {
+                const products = await store.get('products', { _limit: 100 });
+                if (products.length === 0) {
+                    throw new Error('没有可更新的产品');
+                }
+
+                // 批量更新价格
+                const updateData = products.map(product => ({
+                    id: product.id,
+                    price: product.price * 1.1 // 价格上涨 10%
+                }));
+
+                await store.put('products', updateData);
+
+                const duration = Date.now() - startTime;
+                const throughput = Math.round(products.length / (duration / 1000));
+
+                log(`批量更新完成: ${products.length} 条记录，耗时 ${duration}ms，吞吐量 ${throughput} 条/秒`, 'success');
+
+                return {
+                    name: '批量更新',
+                    count: products.length,
+                    duration,
+                    throughput,
+                    success: true
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`批量更新失败: ${error.message}`, 'error');
+                return {
+                    name: '批量更新',
+                    count: 0,
+                    duration,
+                    throughput: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // 批量删除测试
+        async function testBatchDelete() {
+            const startTime = Date.now();
+
+            try {
+                const products = await store.get('products', { _limit: 50 });
+                if (products.length === 0) {
+                    throw new Error('没有可删除的产品');
+                }
+
+                // 批量删除
+                const ids = products.map(p => p.id);
+                await store.delete('products', { id: ids });
+
+                const duration = Date.now() - startTime;
+                const throughput = Math.round(products.length / (duration / 1000));
+
+                log(`批量删除完成: ${products.length} 条记录，耗时 ${duration}ms，吞吐量 ${throughput} 条/秒`, 'success');
+
+                return {
+                    name: '批量删除',
+                    count: products.length,
+                    duration,
+                    throughput,
+                    success: true
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`批量删除失败: ${error.message}`, 'error');
+                return {
+                    name: '批量删除',
+                    count: 0,
+                    duration,
+                    throughput: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // 显示测试结果
+        function displayResults() {
+            const resultsContainer = document.getElementById('testResults');
+
+            if (testResults.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-gray-500 text-center py-8">暂无测试结果</div>';
+                return;
+            }
+
+            resultsContainer.innerHTML = testResults.map(result => `
+                <div class="border border-gray-200 rounded-lg p-4 ${result.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold ${result.success ? 'text-green-800' : 'text-red-800'}">${result.name}</h3>
+                        <span class="text-xs px-2 py-1 rounded ${result.success ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">
+                            ${result.success ? '成功' : '失败'}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-600">数据量:</span>
+                            <span class="font-medium">${result.count} 条</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">耗时:</span>
+                            <span class="font-medium">${result.duration} ms</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">吞吐量:</span>
+                            <span class="font-medium">${result.throughput} 条/秒</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">平均延迟:</span>
+                            <span class="font-medium">${result.count > 0 ? Math.round(result.duration / result.count) : 0} ms/条</span>
+                        </div>
+                    </div>
+                    ${result.details ? `<div class="mt-2 text-sm text-gray-600">${result.details}</div>` : ''}
+                    ${result.error ? `<div class="mt-2 text-sm text-red-600">错误: ${result.error}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // 显示详细统计
+        function displayDetailedStats() {
+            const statsContainer = document.getElementById('detailedStats');
+
+            if (testResults.length === 0) {
+                statsContainer.innerHTML = '';
+                return;
+            }
+
+            const successfulTests = testResults.filter(r => r.success);
+            const totalDuration = testResults.reduce((sum, r) => sum + r.duration, 0);
+            const totalCount = testResults.reduce((sum, r) => sum + r.count, 0);
+            const avgThroughput = successfulTests.length > 0 ?
+                Math.round(successfulTests.reduce((sum, r) => sum + r.throughput, 0) / successfulTests.length) : 0;
+
+            const stats = [
+                { label: '总测试数', value: testResults.length, color: 'blue' },
+                { label: '成功测试', value: successfulTests.length, color: 'green' },
+                { label: '总耗时', value: `${totalDuration} ms`, color: 'purple' },
+                { label: '平均吞吐量', value: `${avgThroughput} 条/秒`, color: 'orange' }
+            ];
+
+            statsContainer.innerHTML = stats.map(stat => `
+                <div class="bg-${stat.color}-50 border border-${stat.color}-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-${stat.color}-600">${stat.value}</div>
+                    <div class="text-sm text-${stat.color}-800">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // 清空测试数据
+        async function clearTestData() {
+            try {
+                // 删除所有产品数据
+                const products = await store.get('products');
+                if (products.length > 0) {
+                    const ids = products.map(p => p.id);
+                    await store.delete('products', { id: ids });
+                    log(`清空了 ${products.length} 条测试数据`, 'warning');
+                }
+            } catch (error) {
+                log('清空测试数据失败: ' + error.message, 'error');
+            }
+        }
+
+        // 清空测试结果
+        function clearResults() {
+            testResults = [];
+            document.getElementById('testResults').innerHTML = '<div class="text-gray-500 text-center py-8">暂无测试结果</div>';
+            document.getElementById('detailedStats').innerHTML = '';
+            updateStatus('等待开始测试...', 0);
+            log('测试结果已清空', 'info');
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', initStore);
+    </script>
+</body>
+</html>

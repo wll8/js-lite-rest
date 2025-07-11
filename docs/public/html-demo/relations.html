@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关系操作 - js-lite-rest</title>
+    <!-- UnoCSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+    <!-- js-lite-rest UMD -->
+    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <nav class="mb-4">
+                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">关系操作</h1>
+            <p class="text-gray-600">演示 js-lite-rest 的关联数据操作，包括嵌套资源、关联查询等功能</p>
+        </header>
+
+        <!-- 导航标签 -->
+        <div class="mb-6">
+            <div class="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
+                <button onclick="showTab('nested')" id="nestedTab" 
+                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white">
+                    嵌套资源
+                </button>
+                <button onclick="showTab('embed')" id="embedTab" 
+                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800">
+                    关联嵌入
+                </button>
+                <button onclick="showTab('expand')" id="expandTab" 
+                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800">
+                    关联扩展
+                </button>
+            </div>
+        </div>
+
+        <!-- 嵌套资源面板 -->
+        <div id="nestedPanel">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 嵌套操作 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">嵌套资源操作</h2>
+                    <p class="text-gray-600 mb-4">演示 posts/1/comments 这样的嵌套资源操作</p>
+                    
+                    <div class="space-y-4">
+                        <!-- 选择文章 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">选择文章</label>
+                            <select id="selectedPost" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- 文章选项将动态填充 -->
+                            </select>
+                        </div>
+                        
+                        <!-- 添加评论 -->
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">添加评论到文章</h3>
+                            <div class="space-y-2">
+                                <input type="text" id="nestedCommentAuthor" placeholder="评论者" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <textarea id="nestedCommentContent" placeholder="评论内容" rows="3"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                <button onclick="addNestedComment()" 
+                                        class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
+                                    添加评论 (POST posts/{id}/comments)
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 获取嵌套资源 -->
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">获取文章评论</h3>
+                            <button onclick="getNestedComments()" 
+                                    class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                                获取评论 (GET posts/{id}/comments)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 嵌套结果显示 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">嵌套资源结果</h2>
+                    <div id="nestedResults" class="space-y-3">
+                        <div class="text-gray-500 text-center py-8">选择文章并执行操作查看结果</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关联嵌入面板 -->
+        <div id="embedPanel" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 嵌入操作 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">关联嵌入操作</h2>
+                    <p class="text-gray-600 mb-4">使用 _embed 参数在父资源中嵌入子资源</p>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在文章列表中嵌入评论</h3>
+                            <button onclick="getPostsWithComments()" 
+                                    class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                                获取文章+评论 (GET posts?_embed=comments)
+                            </button>
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在单篇文章中嵌入评论</h3>
+                            <div class="space-y-2">
+                                <select id="embedPostId" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <!-- 文章选项将动态填充 -->
+                                </select>
+                                <button onclick="getPostWithComments()" 
+                                        class="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition-colors">
+                                    获取文章详情+评论 (GET posts/{id}?_embed=comments)
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在用户中嵌入文章</h3>
+                            <button onclick="getUsersWithPosts()" 
+                                    class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
+                                获取用户+文章 (GET users?_embed=posts)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 嵌入结果显示 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">关联嵌入结果</h2>
+                    <div id="embedResults" class="space-y-3 max-h-96 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-8">执行嵌入操作查看结果</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关联扩展面板 -->
+        <div id="expandPanel" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 扩展操作 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">关联扩展操作</h2>
+                    <p class="text-gray-600 mb-4">使用 _expand 参数在子资源中扩展父资源</p>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在评论列表中扩展文章信息</h3>
+                            <button onclick="getCommentsWithPosts()" 
+                                    class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                                获取评论+文章 (GET comments?_expand=post)
+                            </button>
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在单条评论中扩展文章信息</h3>
+                            <div class="space-y-2">
+                                <select id="expandCommentId" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <!-- 评论选项将动态填充 -->
+                                </select>
+                                <button onclick="getCommentWithPost()" 
+                                        class="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition-colors">
+                                    获取评论详情+文章 (GET comments/{id}?_expand=post)
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="font-medium mb-3">在文章中扩展用户信息</h3>
+                            <button onclick="getPostsWithUsers()" 
+                                    class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
+                                获取文章+用户 (GET posts?_expand=user)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 扩展结果显示 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">关联扩展结果</h2>
+                    <div id="expandResults" class="space-y-3 max-h-96 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-8">执行扩展操作查看结果</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据概览 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">数据概览</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="userCount">0</div>
+                    <div class="text-sm text-gray-600">用户数量</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600" id="postCount">0</div>
+                    <div class="text-sm text-gray-600">文章数量</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="commentCount">0</div>
+                    <div class="text-sm text-gray-600">评论数量</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作日志 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">操作日志</h2>
+                <button onclick="clearLog()" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
+            </div>
+            <div id="operationLog" class="bg-gray-50 p-4 rounded-md h-48 overflow-y-auto font-mono text-sm">
+                <!-- 操作日志将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let store;
+        
+        // 初始化 store
+        async function initStore() {
+            try {
+                store = await createStore({
+                    users: [
+                        { id: 1, name: 'Alice', email: 'alice@example.com' },
+                        { id: 2, name: 'Bob', email: 'bob@example.com' },
+                        { id: 3, name: 'Charlie', email: 'charlie@example.com' }
+                    ],
+                    posts: [
+                        { id: 1, title: 'JavaScript 基础教程', content: '这是一篇关于 JavaScript 基础的教程...', userId: 1 },
+                        { id: 2, title: 'React 入门指南', content: '学习 React 的最佳实践...', userId: 2 },
+                        { id: 3, title: 'Node.js 服务端开发', content: '使用 Node.js 构建后端服务...', userId: 1 },
+                        { id: 4, title: 'CSS 布局技巧', content: '掌握现代 CSS 布局方法...', userId: 3 }
+                    ],
+                    comments: [
+                        { id: 1, content: '很好的教程！', postId: 1, userId: 2 },
+                        { id: 2, content: '学到了很多', postId: 1, userId: 3 },
+                        { id: 3, content: 'React 确实很强大', postId: 2, userId: 1 },
+                        { id: 4, content: '期待更多内容', postId: 2, userId: 3 },
+                        { id: 5, content: 'Node.js 很实用', postId: 3, userId: 2 }
+                    ]
+                });
+                
+                log('关系操作演示初始化成功');
+                updateSelects();
+                updateDataOverview();
+            } catch (error) {
+                log('关系操作演示初始化失败: ' + error.message, 'error');
+            }
+        }
+
+        // 日志记录
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('operationLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600';
+            logElement.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // 清空日志
+        function clearLog() {
+            document.getElementById('operationLog').innerHTML = '';
+        }
+
+        // 标签切换
+        function showTab(tab) {
+            // 隐藏所有面板
+            document.getElementById('nestedPanel').classList.add('hidden');
+            document.getElementById('embedPanel').classList.add('hidden');
+            document.getElementById('expandPanel').classList.add('hidden');
+
+            // 重置所有标签样式
+            document.getElementById('nestedTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
+            document.getElementById('embedTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
+            document.getElementById('expandTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
+
+            // 显示选中的面板和设置活动标签
+            if (tab === 'nested') {
+                document.getElementById('nestedPanel').classList.remove('hidden');
+                document.getElementById('nestedTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
+            } else if (tab === 'embed') {
+                document.getElementById('embedPanel').classList.remove('hidden');
+                document.getElementById('embedTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
+            } else if (tab === 'expand') {
+                document.getElementById('expandPanel').classList.remove('hidden');
+                document.getElementById('expandTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
+            }
+        }
+
+        // 更新选择框
+        async function updateSelects() {
+            try {
+                const posts = await store.get('posts');
+                const comments = await store.get('comments');
+
+                // 更新文章选择框
+                const postSelects = ['selectedPost', 'embedPostId'];
+                postSelects.forEach(selectId => {
+                    const select = document.getElementById(selectId);
+                    if (select) {
+                        select.innerHTML = posts.map(post =>
+                            `<option value="${post.id}">${post.title}</option>`
+                        ).join('');
+                    }
+                });
+
+                // 更新评论选择框
+                const commentSelect = document.getElementById('expandCommentId');
+                if (commentSelect) {
+                    commentSelect.innerHTML = comments.map(comment =>
+                        `<option value="${comment.id}">评论 ${comment.id}: ${comment.content.substring(0, 20)}...</option>`
+                    ).join('');
+                }
+            } catch (error) {
+                log('更新选择框失败: ' + error.message, 'error');
+            }
+        }
+
+        // 更新数据概览
+        async function updateDataOverview() {
+            try {
+                const users = await store.get('users');
+                const posts = await store.get('posts');
+                const comments = await store.get('comments');
+
+                document.getElementById('userCount').textContent = users.length;
+                document.getElementById('postCount').textContent = posts.length;
+                document.getElementById('commentCount').textContent = comments.length;
+            } catch (error) {
+                log('更新数据概览失败: ' + error.message, 'error');
+            }
+        }
+
+        // 添加嵌套评论
+        async function addNestedComment() {
+            const postId = document.getElementById('selectedPost').value;
+            const author = document.getElementById('nestedCommentAuthor').value.trim();
+            const content = document.getElementById('nestedCommentContent').value.trim();
+
+            if (!author || !content) {
+                log('请填写评论者和评论内容', 'error');
+                return;
+            }
+
+            try {
+                const newComment = await store.post(`posts/${postId}/comments`, {
+                    content,
+                    userId: 1, // 简化处理，假设当前用户ID为1
+                    author // 添加作者字段用于显示
+                });
+
+                log(`添加嵌套评论成功: POST posts/${postId}/comments`, 'success');
+
+                // 清空表单
+                document.getElementById('nestedCommentAuthor').value = '';
+                document.getElementById('nestedCommentContent').value = '';
+
+                // 刷新显示
+                getNestedComments();
+                updateDataOverview();
+                updateSelects();
+            } catch (error) {
+                log('添加嵌套评论失败: ' + error.message, 'error');
+            }
+        }
+
+        // 获取嵌套评论
+        async function getNestedComments() {
+            const postId = document.getElementById('selectedPost').value;
+
+            try {
+                const comments = await store.get(`posts/${postId}/comments`);
+                log(`获取嵌套评论成功: GET posts/${postId}/comments，返回 ${comments.length} 条评论`, 'success');
+
+                displayNestedResults(comments, `文章 ${postId} 的评论`);
+            } catch (error) {
+                log('获取嵌套评论失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示嵌套结果
+        function displayNestedResults(data, title) {
+            const resultsContainer = document.getElementById('nestedResults');
+
+            let html = `<h3 class="font-semibold mb-3">${title}</h3>`;
+
+            if (Array.isArray(data) && data.length === 0) {
+                html += '<div class="text-gray-500 text-center py-4">暂无数据</div>';
+            } else if (Array.isArray(data)) {
+                html += data.map(item => `
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <div class="text-sm">
+                            <strong>ID:</strong> ${item.id}<br>
+                            <strong>内容:</strong> ${item.content}<br>
+                            ${item.author ? `<strong>作者:</strong> ${item.author}<br>` : ''}
+                            ${item.userId ? `<strong>用户ID:</strong> ${item.userId}<br>` : ''}
+                            ${item.postId ? `<strong>文章ID:</strong> ${item.postId}` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <pre class="text-sm">${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        // 获取文章和评论（嵌入）
+        async function getPostsWithComments() {
+            try {
+                const posts = await store.get('posts', { _embed: 'comments' });
+                log(`获取文章+评论成功: GET posts?_embed=comments，返回 ${posts.length} 篇文章`, 'success');
+
+                displayEmbedResults(posts, '文章列表（嵌入评论）');
+            } catch (error) {
+                log('获取文章+评论失败: ' + error.message, 'error');
+            }
+        }
+
+        // 获取单篇文章和评论（嵌入）
+        async function getPostWithComments() {
+            const postId = document.getElementById('embedPostId').value;
+
+            try {
+                const post = await store.get(`posts/${postId}`, { _embed: 'comments' });
+                log(`获取文章详情+评论成功: GET posts/${postId}?_embed=comments`, 'success');
+
+                displayEmbedResults(post, `文章 ${postId} 详情（嵌入评论）`);
+            } catch (error) {
+                log('获取文章详情+评论失败: ' + error.message, 'error');
+            }
+        }
+
+        // 获取用户和文章（嵌入）
+        async function getUsersWithPosts() {
+            try {
+                const users = await store.get('users', { _embed: 'posts' });
+                log(`获取用户+文章成功: GET users?_embed=posts，返回 ${users.length} 个用户`, 'success');
+
+                displayEmbedResults(users, '用户列表（嵌入文章）');
+            } catch (error) {
+                log('获取用户+文章失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示嵌入结果
+        function displayEmbedResults(data, title) {
+            const resultsContainer = document.getElementById('embedResults');
+
+            let html = `<h3 class="font-semibold mb-3">${title}</h3>`;
+
+            if (Array.isArray(data)) {
+                if (data.length === 0) {
+                    html += '<div class="text-gray-500 text-center py-4">暂无数据</div>';
+                } else {
+                    html += data.map(item => {
+                        let itemHtml = `
+                            <div class="border border-gray-200 rounded-lg p-3 mb-3">
+                                <div class="font-medium mb-2">
+                                    ${item.title || item.name || `ID: ${item.id}`}
+                                </div>
+                                <div class="text-sm text-gray-600 mb-2">
+                                    ${item.content || item.email || ''}
+                                </div>
+                        `;
+
+                        // 显示嵌入的关联数据
+                        if (item.comments && item.comments.length > 0) {
+                            itemHtml += `
+                                <div class="mt-2 pl-4 border-l-2 border-blue-200">
+                                    <div class="text-xs text-gray-500 mb-1">评论 (${item.comments.length})</div>
+                                    ${item.comments.map(comment => `
+                                        <div class="text-xs bg-gray-50 p-2 rounded mb-1">
+                                            ${comment.content}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+
+                        if (item.posts && item.posts.length > 0) {
+                            itemHtml += `
+                                <div class="mt-2 pl-4 border-l-2 border-green-200">
+                                    <div class="text-xs text-gray-500 mb-1">文章 (${item.posts.length})</div>
+                                    ${item.posts.map(post => `
+                                        <div class="text-xs bg-gray-50 p-2 rounded mb-1">
+                                            ${post.title}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+
+                        itemHtml += '</div>';
+                        return itemHtml;
+                    }).join('');
+                }
+            } else {
+                // 单个对象
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <pre class="text-sm overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        // 获取评论和文章（扩展）
+        async function getCommentsWithPosts() {
+            try {
+                const comments = await store.get('comments', { _expand: 'post' });
+                log(`获取评论+文章成功: GET comments?_expand=post，返回 ${comments.length} 条评论`, 'success');
+
+                displayExpandResults(comments, '评论列表（扩展文章信息）');
+            } catch (error) {
+                log('获取评论+文章失败: ' + error.message, 'error');
+            }
+        }
+
+        // 获取单条评论和文章（扩展）
+        async function getCommentWithPost() {
+            const commentId = document.getElementById('expandCommentId').value;
+
+            try {
+                const comment = await store.get(`comments/${commentId}`, { _expand: 'post' });
+                log(`获取评论详情+文章成功: GET comments/${commentId}?_expand=post`, 'success');
+
+                displayExpandResults(comment, `评论 ${commentId} 详情（扩展文章信息）`);
+            } catch (error) {
+                log('获取评论详情+文章失败: ' + error.message, 'error');
+            }
+        }
+
+        // 获取文章和用户（扩展）
+        async function getPostsWithUsers() {
+            try {
+                const posts = await store.get('posts', { _expand: 'user' });
+                log(`获取文章+用户成功: GET posts?_expand=user，返回 ${posts.length} 篇文章`, 'success');
+
+                displayExpandResults(posts, '文章列表（扩展用户信息）');
+            } catch (error) {
+                log('获取文章+用户失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示扩展结果
+        function displayExpandResults(data, title) {
+            const resultsContainer = document.getElementById('expandResults');
+
+            let html = `<h3 class="font-semibold mb-3">${title}</h3>`;
+
+            if (Array.isArray(data)) {
+                if (data.length === 0) {
+                    html += '<div class="text-gray-500 text-center py-4">暂无数据</div>';
+                } else {
+                    html += data.map(item => {
+                        let itemHtml = `
+                            <div class="border border-gray-200 rounded-lg p-3 mb-3">
+                                <div class="font-medium mb-2">
+                                    ${item.content || item.title || `ID: ${item.id}`}
+                                </div>
+                        `;
+
+                        // 显示扩展的关联数据
+                        if (item.post) {
+                            itemHtml += `
+                                <div class="mt-2 pl-4 border-l-2 border-blue-200">
+                                    <div class="text-xs text-gray-500 mb-1">关联文章</div>
+                                    <div class="text-sm bg-blue-50 p-2 rounded">
+                                        <div class="font-medium">${item.post.title}</div>
+                                        <div class="text-xs text-gray-600">${item.post.content.substring(0, 50)}...</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        if (item.user) {
+                            itemHtml += `
+                                <div class="mt-2 pl-4 border-l-2 border-green-200">
+                                    <div class="text-xs text-gray-500 mb-1">关联用户</div>
+                                    <div class="text-sm bg-green-50 p-2 rounded">
+                                        <div class="font-medium">${item.user.name}</div>
+                                        <div class="text-xs text-gray-600">${item.user.email}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        itemHtml += '</div>';
+                        return itemHtml;
+                    }).join('');
+                }
+            } else {
+                // 单个对象
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-3">
+                        <pre class="text-sm overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', initStore);
+    </script>
+</body>
+</html>

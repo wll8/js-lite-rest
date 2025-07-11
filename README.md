@@ -2,20 +2,23 @@
 
 [![npm version](https://badge.fury.io/js/js-lite-rest.svg)](https://badge.fury.io/js/js-lite-rest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/wll8/js-lite-rest/workflows/CI/badge.svg)](https://github.com/wll8/js-lite-rest/actions)
 
-一套 ECMAScript 类似于 json-server 的 RESTful 接口，像 BS 风格那样操作本地轻量数据的应用场景，例如做一个单机的客户端管理应用程序。通过 `store.get("book/1")` 获取图书详情，但无需 SQL 支持。
+纯前端 RESTful 风格增删改查库，适用于单机应用和原型开发。无需后端服务器，即可实现完整的数据 CRUD 操作。
 
-## 特性
+## ✨ 特性
 
-- 🚀 **轻量级**：无依赖，体积小
+- 🚀 **轻量级**：零依赖，压缩后仅几KB
 - 🌐 **跨平台**：同时支持 Node.js 和浏览器环境
-- 📦 **多种存储**：支持内存、文件、localStorage 存储
-- 🔄 **RESTful API**：提供类似 HTTP 的 CRUD 操作接口
-- 🎯 **TypeScript 支持**：完整的类型定义
+- 📦 **多种存储**：支持内存、文件系统、localStorage 存储
+- 🔄 **RESTful API**：提供标准的 HTTP 风格 CRUD 操作接口
+- 🎯 **TypeScript 支持**：完整的类型定义，开发体验更佳
 - 🔧 **可扩展**：支持中间件和自定义适配器
 - ⚡ **异步操作**：所有操作都是异步的，性能更好
+- 🔗 **关联查询**：支持嵌套资源和关联数据查询
+- 📝 **批量操作**：支持批量增删改查操作
 
-## 安装
+## 📦 安装
 
 ```bash
 npm install js-lite-rest
@@ -28,14 +31,26 @@ yarn add js-lite-rest
 pnpm add js-lite-rest
 ```
 
-## 快速开始
+### CDN 引入
+
+```html
+<!-- ES Module -->
+<script type="module">
+  import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+</script>
+
+<!-- UMD (全局变量) -->
+<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+```
+
+## 🚀 快速开始
 
 ### Node.js 环境
 
 ```js
 import createStore from 'js-lite-rest';
 
-// 创建 store 实例
+// 创建 store 实例，数据将保存到文件
 const store = await createStore({
   books: [
     { id: 1, title: 'JavaScript 权威指南', author: 'David Flanagan' },
@@ -51,11 +66,15 @@ console.log(books); // 返回所有书籍
 const book = await store.get('books/1');
 console.log(book); // { id: 1, title: 'JavaScript 权威指南', author: 'David Flanagan' }
 
-// 添加新书籍
-await store.post('books', { title: 'Vue.js 实战', author: 'John Doe' });
+// 添加新书籍（自动生成 ID）
+const newBook = await store.post('books', { title: 'Vue.js 实战', author: 'John Doe' });
+console.log(newBook); // { id: 3, title: 'Vue.js 实战', author: 'John Doe' }
 
 // 更新书籍
 await store.put('books/1', { title: 'JavaScript 高级程序设计', author: 'Nicholas C. Zakas' });
+
+// 部分更新
+await store.patch('books/1', { author: 'Nicholas Zakas' });
 
 // 删除书籍
 await store.delete('books/2');
@@ -67,71 +86,272 @@ await store.delete('books/2');
 <!DOCTYPE html>
 <html>
 <head>
+  <title>js-lite-rest 示例</title>
   <script type="module">
     import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
 
     // 在浏览器中使用 localStorage 存储
     const store = await createStore();
 
-    // 添加数据
+    // 添加用户数据
     await store.post('users', { name: 'Alice', email: 'alice@example.com' });
+    await store.post('users', { name: 'Bob', email: 'bob@example.com' });
 
-    // 查询数据
+    // 查询所有用户
     const users = await store.get('users');
-    console.log(users);
+    console.log('所有用户:', users);
+
+    // 查询特定用户
+    const user = await store.get('users/1');
+    console.log('用户 1:', user);
   </script>
 </head>
 <body>
+  <h1>js-lite-rest 浏览器示例</h1>
+  <p>打开控制台查看输出结果</p>
 </body>
 </html>
 ```
 
 
-## 参数
+## 📖 API 文档
 
-### createStore(data, opt)
+### createStore(data?, options?)
 
-``` txt
-data 数据源。
-  如果传入字符串：
-    在 nodejs 作为 json 文件路径。
-    在浏览器环境作为 localStorage 的 key。
-  如果传入 json 对象：
-    则直接操作该 json 对象。
-  如果不传入任何内容：
-    在浏览器环境下会使用 localStorage 存储数据，存储的 key 为 `js-lite-rest`。
-    在 node 环境下会在启动目录创建 js-lite-rest.json 的数据。
-  如果传入 null：
-    则表示自定义数据源，在 opt 选项中进行详细定义，例如将操作转发到 sql 或 http 接口。
+创建一个新的 store 实例。
 
-opt 配置选项。
-  传入拦截器：
-    可以对数据进行前置、后置等操作。
-  传入适配器，data 为 null 时可用：
-    支持适配器：
-      json(data) - 默认适配器，将数据转为 json，可在 node 和浏览器中使用。参数和 Store 中的 data 一样。
-      sqlLite(dbUrl) - 转换请求为 sqlLite 数据库语句。
+#### 参数
+
+**data** (可选)
+- **类型**: `string | object | null`
+- **默认值**: `{}`
+
+数据源配置：
+- **字符串**:
+  - Node.js 环境：作为 JSON 文件路径
+  - 浏览器环境：作为 localStorage 的 key
+- **对象**: 直接使用该对象作为初始数据
+- **null**: 使用自定义适配器（需在 options 中配置）
+- **未传入**: 使用默认存储位置
+  - 浏览器：localStorage key 为 `js-lite-rest`
+  - Node.js：当前目录下的 `js-lite-rest.json` 文件
+
+**options** (可选)
+- **类型**: `StoreOptions`
+
+配置选项：
+- `idKeySuffix`: ID 键后缀，默认为 `'Id'`
+- `savePath`: 自定义保存路径
+- `load`: 自定义加载函数
+- `save`: 自定义保存函数
+- `adapter`: 自定义适配器
+
+### Store 实例方法
+
+#### GET 操作
+
+```js
+// 获取所有记录
+await store.get('users');
+
+// 获取特定记录
+await store.get('users/1');
+
+// 嵌套资源查询
+await store.get('posts/1/comments');
 ```
 
-## todo
-  - [x] feat: json 适配器
-  - [x] feat: 浏览器支持
-  - [x] feat: 拦截器
-  - [x] feat: nodejs 支持
-  - [ ] feat: sqlLite 适配器
+#### POST 操作
 
-## 开发环境
+```js
+// 添加单条记录
+await store.post('users', { name: 'Alice', email: 'alice@example.com' });
 
-- vitest 测试框架
-- rollup 适用于 cmd umd esm 的库
-- antfu/eslint-config
-- pnpm 10
-- nodejs 20
+// 批量添加
+await store.post('users', [
+  { name: 'Bob', email: 'bob@example.com' },
+  { name: 'Charlie', email: 'charlie@example.com' }
+]);
 
+// 嵌套资源添加
+await store.post('posts/1/comments', { content: '很好的文章！' });
+```
 
-## 相似项目
+#### PUT 操作
 
-- [Dexie](https://github.com/dexie/Dexie.js) - 浏览器数据库
-- https://pouchdb.com/
-- https://jsstore.net/
-- https://github.com/google/lovefield
+```js
+// 完全替换记录
+await store.put('users/1', { name: 'Alice Smith', email: 'alice.smith@example.com' });
+
+// 批量更新
+await store.put('users', [
+  { id: 1, name: 'Alice Updated' },
+  { id: 2, name: 'Bob Updated' }
+]);
+```
+
+#### PATCH 操作
+
+```js
+// 部分更新记录
+await store.patch('users/1', { name: 'Alice Johnson' });
+```
+
+#### DELETE 操作
+
+```js
+// 删除单条记录
+await store.delete('users/1');
+
+// 批量删除
+await store.delete('users', { id: [1, 2, 3] });
+```
+
+## 🔧 高级用法
+
+### 中间件
+
+使用中间件可以在请求前后执行自定义逻辑：
+
+```js
+const store = await createStore();
+
+// 添加日志中间件
+store.use(async (args, next, opt) => {
+  const [method, path] = args;
+  console.log(`${method.toUpperCase()} ${path}`);
+
+  const result = await next();
+  console.log('结果:', result);
+
+  return result;
+});
+
+// 添加验证中间件
+store.use(async (args, next, opt) => {
+  const [method, path, data] = args;
+
+  if (method === 'post' && path === 'users') {
+    if (!data.email) {
+      throw new Error('邮箱是必填项');
+    }
+  }
+
+  return next();
+});
+```
+
+### 自定义适配器
+
+```js
+// 创建自定义适配器
+class CustomAdapter {
+  constructor(config) {
+    this.config = config;
+  }
+
+  async get(path) {
+    // 自定义获取逻辑
+  }
+
+  async post(path, data) {
+    // 自定义创建逻辑
+  }
+
+  // ... 其他方法
+}
+
+// 使用自定义适配器
+const store = await createStore(null, {
+  adapter: new CustomAdapter({ /* 配置 */ })
+});
+```
+
+### 关联数据
+
+支持嵌套资源和关联查询：
+
+```js
+const store = await createStore({
+  posts: [
+    { id: 1, title: '第一篇文章', authorId: 1 },
+    { id: 2, title: '第二篇文章', authorId: 2 }
+  ],
+  comments: [
+    { id: 1, content: '很好的文章！', postId: 1 },
+    { id: 2, content: '我也这么认为', postId: 1 }
+  ]
+});
+
+// 获取文章的所有评论
+const comments = await store.get('posts/1/comments');
+console.log(comments); // 返回 postId 为 1 的所有评论
+```
+
+## 🛠️ 开发
+
+### 环境要求
+
+- Node.js 20+
+- pnpm 10+
+
+### 开发脚本
+
+```bash
+# 安装依赖
+pnpm install
+
+# 运行测试
+pnpm test
+
+# 构建项目
+pnpm build
+
+# 开发文档
+pnpm docs:dev
+
+# 构建文档
+pnpm docs:build
+```
+
+### 技术栈
+
+- **构建工具**: Rollup
+- **测试框架**: Mocha + Chai
+- **代码规范**: @antfu/eslint-config
+- **文档**: VitePress
+- **包管理**: pnpm
+
+## 📋 待办事项
+
+- [x] JSON 适配器
+- [x] 浏览器支持
+- [x] 中间件系统
+- [x] Node.js 支持
+- [x] TypeScript 类型定义
+- [x] 批量操作
+- [x] 嵌套资源
+- [ ] SQLite 适配器
+- [ ] 数据验证
+- [ ] 查询过滤器
+
+## 🔗 相关项目
+
+- [Dexie](https://github.com/dexie/Dexie.js) - 现代浏览器 IndexedDB 包装器
+- [PouchDB](https://pouchdb.com/) - 浏览器和 Node.js 的数据库
+- [JSStore](https://jsstore.net/) - 类 SQL 的 IndexedDB 包装器
+- [Lovefield](https://github.com/google/lovefield) - Google 的关系型数据库库
+
+## 📄 许可证
+
+[MIT](./LICENSE) © [xw](https://github.com/wll8)
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request

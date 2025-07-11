@@ -1,7 +1,7 @@
 {
   "name": "js-lite-rest",
   "version": "0.0.1",
-  "description": "一套 ECMAScript 类似于 json-server 的 RESTful 接口，像 BS 风格那样操作本地轻量数据的应用场景",
+  "description": "纯前端 RESTful 风格增删改查。",
   "type": "module",
   "main": "dist/js-lite-rest.node.cjs.js",
   "module": "dist/js-lite-rest.node.esm.js",
@@ -40,7 +40,10 @@
     "build": "rollup -c",
     "build:types": "node scripts/copy-types.js",
     "prepublishOnly": "pnpm build && pnpm build:types && pnpm test:build",
-    "prepack": "pnpm build && pnpm build:types"
+    "prepack": "pnpm build && pnpm build:types",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [
     "json",
