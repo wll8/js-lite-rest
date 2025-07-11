@@ -108,9 +108,7 @@ export default defineConfig({
   },
 
   // 构建配置
-  build: {
-    outDir: '../dist/docs'
-  },
+  outDir: '../dist/docs',
 
   // 开发服务器配置
   server: {
