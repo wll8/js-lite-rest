@@ -4,9 +4,9 @@ export default defineConfig({
   title: 'js-lite-rest',
   description: '纯前端 RESTful 风格增删改查库',
   lang: 'zh-CN',
+  base: '/js-lite-rest/',
 
   head: [
-    ['link', { rel: 'icon', href: '/favicon.ico' }],
     // 全局嵌入 UMD 版本供控制台调试使用
     ['script', { src: 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js' }],
     // UnoCSS CDN
@@ -15,7 +15,7 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
+    // logo: '/logo.svg',
 
     nav: [
       { text: '首页', link: '/' },
