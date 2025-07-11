@@ -21,7 +21,7 @@ concurrency:
 jobs:
   # 构建作业
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,17 +39,17 @@ jobs:
           version: 10.7.0
 
       - name: Get pnpm store directory
-        shell: bash
+        shell: pwsh
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $env:GITHUB_ENV
 
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: Windows-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            Windows-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -88,7 +88,7 @@ jobs:
   # 预览作业（用于 PR）
   preview:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build
     steps:
       - name: Comment PR
