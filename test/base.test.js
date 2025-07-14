@@ -5,7 +5,7 @@ const expect = chai.expect;
 
 import fs from 'fs';
 
-export function testMain(Store, opt = {}) {
+export function testMain(JsLiteRest, opt = {}) {
   if (opt.afterEach) {
     afterEach(opt.afterEach);
   }
@@ -16,7 +16,7 @@ export function testMain(Store, opt = {}) {
   describe('基本操作', () => {
     let store;
     beforeEach(async () => {
-      store = await Store.create({
+      store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -49,7 +49,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].id).to.equal(2);
     });
     it('patch 部分更新', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', author: 'A' },
           { id: 2, title: 'js', author: 'B' },
@@ -67,7 +67,7 @@ export function testMain(Store, opt = {}) {
   // 过滤
   describe('过滤', () => {
     it('get 查询', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -78,7 +78,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].title).to.equal('css');
     });
     it('get 多字段过滤', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', type: 'js', discount: 1 },
           { id: 2, title: 'js', type: 'js', discount: 0 },
@@ -90,7 +90,7 @@ export function testMain(Store, opt = {}) {
       expect(books[0].id).to.equal(1);
     });
     it('get 同字段多值过滤', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -102,7 +102,7 @@ export function testMain(Store, opt = {}) {
       expect(books.map(b => b.id)).to.include(1).and.include(2);
     });
     it('get 点语法深层字段过滤', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', author: { name: '张三' } },
           { id: 2, title: 'js', author: { name: '李四' } },
@@ -117,7 +117,7 @@ export function testMain(Store, opt = {}) {
   // 分页
   describe('分页', () => {
     it('get 分页功能', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -146,7 +146,7 @@ export function testMain(Store, opt = {}) {
       expect(page4Limit2.length).to.equal(0);
     });
     it('get 分页与过滤结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -165,7 +165,7 @@ export function testMain(Store, opt = {}) {
   // 排序
   describe('排序', () => {
     it('get 单字段排序', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', view: 100 },
           { id: 2, title: 'js', view: 200 },
@@ -182,7 +182,7 @@ export function testMain(Store, opt = {}) {
       expect(descResult[2].view).to.equal(50);
     });
     it('get 多字段排序', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', user: 'A', view: 100 },
           { id: 2, title: 'js', user: 'A', view: 200 },
@@ -201,7 +201,7 @@ export function testMain(Store, opt = {}) {
       expect(result[3].view).to.equal(200);
     });
     it('get 排序与过滤结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', type: 'programming', view: 100 },
           { id: 2, title: 'css', type: 'design', view: 200 },
@@ -215,7 +215,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(200);
     });
     it('get 排序与分页结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1', view: 100 },
           { id: 2, title: 'book2', view: 200 },
@@ -230,7 +230,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(200);
     });
     it('get 深层字段排序', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css', author: { name: '张三', age: 30 } },
           { id: 2, title: 'js', author: { name: '李四', age: 25 } },
@@ -247,7 +247,7 @@ export function testMain(Store, opt = {}) {
   // 截取
   describe('截取', () => {
     it('get 截取功能 - start到end', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -264,7 +264,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].id).to.equal(5);
     });
     it('get 截取功能 - start加limit', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -283,7 +283,7 @@ export function testMain(Store, opt = {}) {
       expect(result2[2].id).to.equal(5);
     });
     it('get 截取与过滤结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -298,7 +298,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].title).to.equal('java');
     });
     it('get 截取与排序结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1', view: 100 },
           { id: 2, title: 'book2', view: 200 },
@@ -314,7 +314,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].view).to.equal(100);
     });
     it('get 截取边界情况', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -337,7 +337,7 @@ export function testMain(Store, opt = {}) {
   // 运算
   describe('运算', () => {
     it('get 范围查询 - gte和lte', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1', view: 2000 },
           { id: 2, title: 'book2', view: 4000 },
@@ -351,7 +351,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(6000);
     });
     it('get 排除查询 - ne', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1' },
           { id: 2, title: 'book2' },
@@ -364,7 +364,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].id).to.equal(3);
     });
     it('get 模糊查询 - like单模式', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'javascript', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -379,7 +379,7 @@ export function testMain(Store, opt = {}) {
       expect(result[2].title).to.equal('python');
     });
     it('get 模糊查询 - like多模式', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'javascript', type: 'programming' },
           { id: 2, title: 'css', type: 'design' },
@@ -392,7 +392,7 @@ export function testMain(Store, opt = {}) {
       expect(result[0].title).to.equal('javascript');
     });
     it('get 运算查询与过滤结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', type: 'programming', view: 1000 },
           { id: 2, title: 'css', type: 'design', view: 2000 },
@@ -407,7 +407,7 @@ export function testMain(Store, opt = {}) {
       expect(result2[0].id).to.equal(4);
     });
     it('get 运算查询与排序结合', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1', view: 1000 },
           { id: 2, title: 'book2', view: 3000 },
@@ -421,7 +421,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].view).to.equal(2000);
     });
     it('get 深层字段运算查询', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'book1', author: { name: '张三', age: 25 } },
           { id: 2, title: 'book2', author: { name: '李四', age: 30 } },
@@ -438,7 +438,7 @@ export function testMain(Store, opt = {}) {
   // 全文检索
   describe('全文检索', () => {
     it('get 全文检索 _q参数', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
           { id: 2, title: 'css', author: { name: '李四' }, desc: '设计' },
@@ -461,7 +461,7 @@ export function testMain(Store, opt = {}) {
       expect(result5[0].title).to.equal('html');
     });
     it('get 全文检索 _q参数 - 命中多条', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'js', author: { name: '张三' }, desc: '编程' },
           { id: 2, title: 'css', author: { name: '李四' }, desc: '设计' },
@@ -478,7 +478,7 @@ export function testMain(Store, opt = {}) {
   // 关系
   describe('关系', () => {
     it('get 在父列表中嵌入子列表', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -497,7 +497,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].comments[0].content).to.equal('c3');
     });
     it('get 在父详情中嵌入子列表', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -511,7 +511,7 @@ export function testMain(Store, opt = {}) {
       expect(result.comments[0].content).to.equal('c1');
     });
     it('get 在子列表中扩展父详情', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -527,7 +527,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].posts.title).to.equal('post2');
     });
     it('get 在子详情中扩展父详情', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -543,7 +543,7 @@ export function testMain(Store, opt = {}) {
   // 嵌套
   describe('嵌套', () => {
     it('get posts/1/comments 嵌套资源', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
           { id: 2, title: 'post2' },
@@ -560,7 +560,7 @@ export function testMain(Store, opt = {}) {
       expect(result[1].content).to.equal('c2');
     });
     it('post posts/1/comments 嵌套资源', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'post1' },
         ],
@@ -582,7 +582,7 @@ export function testMain(Store, opt = {}) {
   // 批量操作
   describe('批量操作', () => {
     it('delete /posts?id=1&id=2 批量删除', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'a' },
           { id: 2, title: 'b' },
@@ -598,7 +598,7 @@ export function testMain(Store, opt = {}) {
       expect(left[0].id).to.equal(3);
     });
     it('post /posts 批量创建', async () => {
-      const store = await Store.create({ posts: [] });
+      const store = await JsLiteRest.create({ posts: [] });
       const arr = [
         { title: 'a' },
         { title: 'b' },
@@ -613,7 +613,7 @@ export function testMain(Store, opt = {}) {
       expect(all.length).to.equal(2);
     });
     it('put /posts 批量全量修改', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'a', view: 1 },
           { id: 2, title: 'b', view: 2 },
@@ -634,7 +634,7 @@ export function testMain(Store, opt = {}) {
       expect(all[1].title).to.equal('B');
     });
     it('patch /posts 批量部分修改', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [
           { id: 1, title: 'a', view: 1 },
           { id: 2, title: 'b', view: 2 },
@@ -661,7 +661,7 @@ export function testMain(Store, opt = {}) {
     let store;
 
     beforeEach(async () => {
-      store = await Store.create({
+      store = await JsLiteRest.create({
         book: [
           { id: 1, title: 'css' },
           { id: 2, title: 'js' },
@@ -691,13 +691,37 @@ export function testMain(Store, opt = {}) {
       expect(books.length).to.equal(1);
       expect(books[0].title).to.equal('css');
     });
+    it('中间件执行顺序', async () => {
+      const executionLog = [];
+      
+      store.use(async (args, next) => {
+        executionLog.push('1');
+        const result = await next(args);
+        executionLog.push(`4`);
+        return {use: 1, result};
+      });
+      
+      store.use(async (args, next) => {
+        executionLog.push('2');
+        const result = await next(args);
+        executionLog.push(`3`);
+        return {use: 2, result};
+      });
 
+      const res = await store.get('book');
+      expect(executionLog.join(``)).to.equal(`1234`)
+      && expect(res.use).to.equal(1)
+      && expect(res.result.use).to.equal(2);
+    });
     it('后置拦截器 - 修改响应数据', async () => {
       store.use(async (args, next) => {
         const result = await next(args);
         // 为所有书籍添加时间戳
-        if (Array.isArray(result)) {
-          return result.map(book => ({ ...book, timestamp: Date.now() }));
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(book => ({ ...book, timestamp: Date.now() }))
+          };
         }
         return result;
       });
@@ -713,8 +737,11 @@ export function testMain(Store, opt = {}) {
       store.use(async (args, next) => {
         // 添加标记1
         const result = await next(args);
-        if (Array.isArray(result)) {
-          return result.map(item => ({ ...item, tag1: true }));
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(item => ({ ...item, tag1: true }))
+          };
         }
         return result;
       });
@@ -722,8 +749,11 @@ export function testMain(Store, opt = {}) {
       store.use(async (args, next) => {
         // 添加标记2
         const result = await next(args);
-        if (Array.isArray(result)) {
-          return result.map(item => ({ ...item, tag2: true }));
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(item => ({ ...item, tag2: true }))
+          };
         }
         return result;
       });
@@ -889,13 +919,13 @@ export function testMain(Store, opt = {}) {
       const books3 = await store.get('book');
       expect(books3.length).to.equal(3);
     });
+
   });
 
-  // Store 配置项测试
   describe('Store 配置项', () => {
     it('默认配置项', async () => {
       // 检查默认的 idKeySuffix
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [{ id: 1, title: 'test' }],
         comments: [{ id: 1, postId: 1, content: 'comment' }]
       });
@@ -922,7 +952,7 @@ export function testMain(Store, opt = {}) {
         }
 
         // 传入数据对象，JsStore 已经有默认的 load 和 save 函数
-        const store = await Store.create({
+        const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         });
 
@@ -956,7 +986,7 @@ export function testMain(Store, opt = {}) {
         window.localStorage.removeItem(defaultKey);
 
         // 传入数据对象，现在也会使用默认的 save 函数
-        const store = await Store.create({
+        const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         });
 
@@ -986,7 +1016,7 @@ export function testMain(Store, opt = {}) {
     });
 
     it('自定义 idKeySuffix 配置', async () => {
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         posts: [{ id: 1, title: 'test' }],
         comments: [{ id: 1, post_id: 1, content: 'comment' }]
       }, {
@@ -1019,7 +1049,7 @@ export function testMain(Store, opt = {}) {
         }
 
         // 传入数据对象和自定义路径，JsStore 会自动合并默认的 load 和 save 函数
-        const store = await Store.create({
+        const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         }, {
           savePath: testPath
@@ -1055,7 +1085,7 @@ export function testMain(Store, opt = {}) {
         window.localStorage.removeItem(testKey);
 
         // 传入数据对象和自定义 key
-        const store = await Store.create({
+        const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         }, {
           savePath: testKey
@@ -1104,7 +1134,7 @@ export function testMain(Store, opt = {}) {
       }
 
       const customAdapter = new CustomAdapter({}, {});
-      const store = await Store.create({}, {
+      const store = await JsLiteRest.create({}, {
         adapter: customAdapter
       });
 
@@ -1145,7 +1175,7 @@ export function testMain(Store, opt = {}) {
       };
 
       const testPath = isNodeEnv ? 'test-file.json' : 'test-localStorage-key';
-      const store = await Store.create(testPath, {
+      const store = await JsLiteRest.create(testPath, {
         load: customLoad,
         save: customSave
       });
@@ -1181,7 +1211,7 @@ export function testMain(Store, opt = {}) {
         savedPath = path;
       };
 
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         items: []
       }, {
         idKeySuffix: '_key',
@@ -1197,7 +1227,7 @@ export function testMain(Store, opt = {}) {
     });
 
     it('空配置项测试', async () => {
-      const store = await Store.create();
+      const store = await JsLiteRest.create();
 
       expect(store.opt.idKeySuffix).to.equal('Id');
       // 在测试环境中，默认 savePath 可能不是空字符串
@@ -1224,7 +1254,7 @@ export function testMain(Store, opt = {}) {
         save: mockSave
       };
 
-      const store = await Store.create({}, originalOpt);
+      const store = await JsLiteRest.create({}, originalOpt);
 
       // 修改原始配置对象不应影响 store
       originalOpt.idKeySuffix = 'Modified';
@@ -1241,7 +1271,7 @@ export function testMain(Store, opt = {}) {
       };
 
       try {
-        await Store.create('test-path', {
+        await JsLiteRest.create('test-path', {
           load: errorLoad
         });
         expect.fail('应该抛出错误');
@@ -1257,7 +1287,7 @@ export function testMain(Store, opt = {}) {
 
       // 现在初始化时就会调用 save，所以创建时就会抛出错误
       try {
-        await Store.create({
+        await JsLiteRest.create({
           books: []
         }, {
           save: errorSave
@@ -1299,7 +1329,7 @@ export function testMain(Store, opt = {}) {
           return { items: [] };
         };
 
-        const store = await Store.create(testFile, {
+        const store = await JsLiteRest.create(testFile, {
           load: mockLoad,
           save: mockSave
         });
@@ -1327,7 +1357,7 @@ export function testMain(Store, opt = {}) {
           return { items: [] };
         };
 
-        const store = await Store.create(testKey, {
+        const store = await JsLiteRest.create(testKey, {
           load: mockLoad,
           save: mockSave
         });
@@ -1350,7 +1380,7 @@ export function testMain(Store, opt = {}) {
         savedPath = path;
       };
 
-      const store = await Store.create({
+      const store = await JsLiteRest.create({
         books: []
       }, {
         idKeySuffix: 'Suffix',
@@ -1373,7 +1403,7 @@ export function testMain(Store, opt = {}) {
   });
 }
 
-export async function testNodeStoreBasic(JsStore) {
+export async function testNodeStoreBasic(JsLiteRest) {
   const TEST_FILE = 'test-node-store.json';
 
   describe('文件持久化', () => {
@@ -1383,7 +1413,7 @@ export async function testNodeStoreBasic(JsStore) {
 
     it('json', async () => {
       // 新建 store - 使用异步创建方法
-      const store = await JsStore.create(TEST_FILE);
+      const store = await JsLiteRest.create(TEST_FILE);
       // 新增
       await store.post('book', { title: 'js' });
       await store.post('book', { title: 'css' });
@@ -1406,14 +1436,35 @@ export async function testNodeStoreBasic(JsStore) {
   });
 }
 
-export function testBrowserStore(JsStore) {
+export function testBrowserStore(JsLiteRest) {
+  describe('使用原始 Store 类', () => { 
+    it.only('创建 Store 实例', async () => { 
+      async function load(key) {
+        return JSON.parse(window.localStorage.getItem(key) || '{}');
+      }
+
+      async function save(key, data) {
+        window.localStorage.setItem(key, JSON.stringify(data));
+      }
+      const mergedOpt = { load, save };
+      const store = await JsLiteRest.Store.create({
+        books: [
+          { id: 1, title: 'Book 1' },
+          { id: 2, title: 'Book 2' }
+        ]
+      }, mergedOpt);
+      const books = await store.get('books');
+      expect(books.code).to.be(200)
+      && expect(books.data.length).to.equal(2);
+    });
+  });
   describe('本地存储持久化', () => {
     const TEST_KEY = 'test-browser-store';
     beforeEach(() => {
       window.localStorage.removeItem(TEST_KEY);
     });
     it('localStorage', async () => {
-      const store = await JsStore.create(TEST_KEY);
+      const store = await JsLiteRest.create(TEST_KEY);
       // 新增
       await store.post('book', { title: 'js' });
       await store.post('book', { title: 'css' });
@@ -1431,6 +1482,7 @@ export function testBrowserStore(JsStore) {
       // 检查 localStorage 内容
       const raw = JSON.parse(window.localStorage.getItem(TEST_KEY));
       expect(raw.book.length).to.equal(1);
+
       expect(raw.book[0].title).to.equal('html');
     });
   });

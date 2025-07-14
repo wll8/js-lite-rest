@@ -1,4 +1,48 @@
-// js-lite-rest 主类实现
+
+/**
+ * 将10进制（大于0）转换为35进制
+ * @param {number} decimal - 10进制数字（必须大于0）
+ * @returns {string} - 转换后的35进制字符串
+ */
+function decimalToBase35(decimal) {
+  // 检查输入是否有效
+  if (decimal <= 0) {
+    throw new Error("输入的数字必须大于0");
+  }
+
+  // 定义35进制字符集
+  const base35Chars = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const size = base35Chars.length;
+  let base35Str = '';
+  let num = decimal;
+
+  // 循环将十进制数字转换为35进制
+  while (num > 0) {
+    const remainder = (num - 1) % size; // 调整为从1开始
+    base35Str = base35Chars[remainder] + base35Str;
+    num = Math.floor((num - 1) / size);
+  }
+
+  return base35Str;
+}
+
+function genId() {
+  const time = getTimestamp()
+  return decimalToBase35(time)
+}
+
+function getTimestamp(start = +new Date(2025, 4, 5)) {
+  const time = Date.now() - start
+  const previousTimestamp = globalThis[`previousTimestamp_${start}`]
+  if(time === previousTimestamp) {
+    globalThis[`previousTimestamp_${start}_next`]++
+    return [time, globalThis[`previousTimestamp_${start}_next`] % 35]
+  } else {
+    globalThis[`previousTimestamp_${start}`] = time
+    globalThis[`previousTimestamp_${start}_next`] = 1
+    return [time, 1]
+  }
+}
 
 function getBaseOpt(opt = {}) {
   const newOpt = {
@@ -7,6 +51,35 @@ function getBaseOpt(opt = {}) {
     ...opt,
   }
   return newOpt
+}
+
+// HTTP 状态码常量
+const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500
+};
+
+// 创建标准响应格式
+function createResponse(code, data, error = null) {
+  return {
+    code,
+    success: code >= 200 && code < 300,
+    data,
+    error
+  };
+}
+
+// 创建错误响应
+function createErrorResponse(code, error) {
+  const response = createResponse(code, null, error);
+  // 创建一个可以被 catch 捕获的错误对象，但包含响应格式
+  const errorObj = new Error(typeof error === 'string' ? error : 'Request failed');
+  Object.assign(errorObj, response);
+  return errorObj;
 }
 
 function compose(middlewares, core, opt) {
@@ -19,7 +92,7 @@ function compose(middlewares, core, opt) {
       if (i === middlewares.length) fn = core;
       if (!fn) return Promise.resolve();
       try {
-        return Promise.resolve(fn(_args, (res) => dispatch(i + 1, _args), opt));
+        return Promise.resolve(fn(_args, () => dispatch(i + 1, _args), opt));
       } catch (err) {
         return Promise.reject(err);
       }
@@ -88,8 +161,14 @@ export class Store {
     }
   }
 
-  use(fn) {
-    this.middlewares.push(fn);
+  use(middleware) {
+    // 只支持函数格式的中间件：function(args, next, opt) { ... }
+    // 如果拦截器中抛出错误，会进入 .catch 中处理
+    if (typeof middleware === 'function') {
+      this.middlewares.push(middleware);
+    } else {
+      throw new Error('中间件必须是一个函数');
+    }
     return this;
   }
 
@@ -97,24 +176,69 @@ export class Store {
     // 确保初始化完成
     await this._ensureInitialized();
 
-    const core = async (_args) => {
-      const [method, path, ...restArgs] = _args;
+    try {
+      const core = async (_args) => {
+        const [method, path, ...restArgs] = _args;
 
-      // 检查方法是否支持
-      if (!this.methods.includes(method)) {
-        throw new Error(`不支持的 HTTP 方法: ${method}`);
+        // 检查方法是否支持
+        if (!this.methods.includes(method)) {
+          throw createErrorResponse(HTTP_STATUS.BAD_REQUEST, `不支持的 HTTP 方法: ${method}`);
+        }
+
+        // 动态调用适配器方法
+        if (typeof this.opt.adapter[method] === 'function') {
+          const result = await this.opt.adapter[method](path, ...restArgs);
+          // 处理批量操作的错误格式
+          if (result && typeof result === 'object' && result.data !== undefined && result.error !== undefined) {
+            // 这是批量操作返回的格式 {data: [...], error: [...]}
+            const hasErrors = Array.isArray(result.error) && result.error.some(err => err !== null);
+            if (hasErrors) {
+              // 有错误，但不完全失败，返回部分成功的响应
+              const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
+              return createResponse(statusCode, result.data, result.error);
+            } else {
+              // 全部成功
+              const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
+              return createResponse(statusCode, result.data);
+            }
+          }
+
+          // 根据方法类型确定状态码
+          let statusCode;
+          switch (method.toLowerCase()) {
+            case 'post':
+              statusCode = HTTP_STATUS.CREATED;
+              break;
+            case 'delete':
+              statusCode = result === null ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.OK;
+              break;
+            case 'get':
+              statusCode = result === null ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.OK;
+              break;
+            case 'put':
+            case 'patch':
+              statusCode = result === null ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.OK;
+              break;
+            default:
+              statusCode = HTTP_STATUS.OK;
+          }
+
+          return createResponse(statusCode, result);
+        } else {
+          throw createErrorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, `适配器不支持 ${method} 方法`);
+        }
+      };
+
+      const fn = compose(this.middlewares, core, this.opt);
+      return await fn([method, path, ...args]);
+    } catch (error) {
+      // 如果错误已经是我们的响应格式，直接抛出
+      if (error.code && error.success !== undefined) {
+        throw error;
       }
-
-      // 动态调用适配器方法
-      if (typeof this.opt.adapter[method] === 'function') {
-        return await this.opt.adapter[method](path, ...restArgs);
-      } else {
-        throw new Error(`适配器不支持 ${method} 方法`);
-      }
-    };
-
-    const fn = compose(this.middlewares, core, this.opt);
-    return fn([method, path, ...args]);
+      // 否则包装为标准错误响应
+      throw createErrorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error.message || error);
+    }
   }
 }
 
@@ -297,17 +421,37 @@ export class JsonAdapter {
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
       const results = [];
-      for (const item of data) {
+      const errors = [];
+      let hasErrors = false;
+
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
         if (item.id !== undefined) {
           results.push(null);
+          errors.push('不能指定 id，id 会自动生成');
+          hasErrors = true;
           continue;
         }
-        const newItem = { ...item };
-        newItem.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
-        arr.push(newItem);
-        results.push(newItem);
+        try {
+          const newItem = { ...item };
+          newItem.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+          arr.push(newItem);
+          results.push(newItem);
+          errors.push(null);
+        } catch (error) {
+          results.push(null);
+          errors.push(error.message || '创建失败');
+          hasErrors = true;
+        }
       }
+
       await this.save();
+
+      // 如果有错误，返回包含错误信息的结果
+      if (hasErrors) {
+        return { data: results, error: errors };
+      }
+
       return results;
     }
     // 嵌套资源 POST /posts/1/comments
@@ -342,20 +486,36 @@ export class JsonAdapter {
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
       const results = [];
-      for (const item of data) {
+      const errors = [];
+      let hasErrors = false;
+
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
         if (item.id === undefined) {
           results.push(null);
+          errors.push('缺少 id 字段');
+          hasErrors = true;
           continue;
         }
         const idx = arr.findIndex(x => String(x.id) === String(item.id));
         if (idx === -1) {
           results.push(null);
+          errors.push(`未找到 id 为 ${item.id} 的记录`);
+          hasErrors = true;
           continue;
         }
         arr[idx] = { ...arr[idx], ...item };
         results.push(arr[idx]);
+        errors.push(null);
       }
+
       await this.save();
+
+      // 如果有错误，返回包含错误信息的结果
+      if (hasErrors) {
+        return { data: results, error: errors };
+      }
+
       return results;
     }
     let cur = this.data;
@@ -379,16 +539,29 @@ export class JsonAdapter {
       const ids = Array.isArray(query.id) ? query.id : [query.id];
       const arr = this.data[segs[0]];
       const results = [];
+      const errors = [];
+      let hasErrors = false;
+
       for (const id of ids) {
         const idx = arr.findIndex(item => String(item.id) === String(id));
         if (idx === -1) {
           results.push(null);
+          errors.push(`未找到 id 为 ${id} 的记录`);
+          hasErrors = true;
           continue;
         }
         const del = arr.splice(idx, 1)[0];
         results.push(del);
+        errors.push(null);
       }
+
       await this.save();
+
+      // 如果有错误，返回包含错误信息的结果
+      if (hasErrors) {
+        return { data: results, error: errors };
+      }
+
       return results;
     }
     let cur = this.data;
@@ -411,20 +584,36 @@ export class JsonAdapter {
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
       const results = [];
-      for (const item of data) {
+      const errors = [];
+      let hasErrors = false;
+
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
         if (item.id === undefined) {
           results.push(null);
+          errors.push('缺少 id 字段');
+          hasErrors = true;
           continue;
         }
         const idx = arr.findIndex(x => String(x.id) === String(item.id));
         if (idx === -1) {
           results.push(null);
+          errors.push(`未找到 id 为 ${item.id} 的记录`);
+          hasErrors = true;
           continue;
         }
         arr[idx] = { ...arr[idx], ...item };
         results.push(arr[idx]);
+        errors.push(null);
       }
+
       await this.save();
+
+      // 如果有错误，返回包含错误信息的结果
+      if (hasErrors) {
+        return { data: results, error: errors };
+      }
+
       return results;
     }
     let cur = this.data;
@@ -440,4 +629,31 @@ export class JsonAdapter {
     await this.save();
     return cur[idx];
   }
-} 
+}
+
+// 内置拦截器：lite
+const lite = async (args, next) => {
+  try {
+    const result = await next();
+    if (result && typeof result === 'object' && result.success !== undefined) {
+      if (result.success) {
+        return result.data;
+      } else {
+        throw result.error;
+      }
+    }
+    return result;
+  } catch (error) {
+    // 处理错误情况
+    if (error && typeof error === 'object' && error.success !== undefined) {
+      throw error.error;
+    }
+    // 其他错误
+    throw error.message || error;
+  }
+};
+
+// 导出拦截器对象
+export const interceptor = {
+  lite
+};

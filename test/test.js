@@ -22,25 +22,25 @@ async function setupJSDOM() {
 
 const envMap = {
   async node(path) {
-    const create = (await import(path)).default;
-    testMain({ create }, {
+    const JsLiteRest = (await import(path)).default;
+    testMain(JsLiteRest, {
       afterEach() {
         const savePath = `js-lite-rest.json`
         if (fs.existsSync(savePath)) fs.unlinkSync(savePath);
       }
     });
-    testNodeStoreBasic({ create });
+    testNodeStoreBasic(JsLiteRest);
   },
   async browser(path) {
     await setupJSDOM();
-    const create = (await import(path)).default;
-    testMain({ create }, {
+    const JsLiteRest = (await import(path)).default;
+    testMain(JsLiteRest, {
       afterEach() {
         const savePath = `js-lite-rest`
         window.localStorage.removeItem(savePath);
       }
     });
-    testBrowserStore({ create });
+    testBrowserStore(JsLiteRest);
   },
 }
 
