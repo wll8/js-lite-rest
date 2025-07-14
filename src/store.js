@@ -27,8 +27,7 @@ function decimalToBase35(decimal) {
 }
 
 function genId() {
-  const time = getTimestamp()
-  return decimalToBase35(time)
+  return getTimestamp().map(decimalToBase35).join(``)
 }
 
 function getTimestamp(start = +new Date(2025, 4, 5)) {
@@ -59,6 +58,7 @@ const HTTP_STATUS = {
   CREATED: 201,
   NO_CONTENT: 204,
   BAD_REQUEST: 400,
+  SEE_OTHER: 303,
   NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500
 };
@@ -74,10 +74,11 @@ function createResponse(code, data, error = null) {
 }
 
 // 创建错误响应
-function createErrorResponse(code, error) {
-  const response = createResponse(code, null, error);
+function createErrorResponse(code, error, data = null) {
+  const response = createResponse(code, data, error);
   // 创建一个可以被 catch 捕获的错误对象，但包含响应格式
-  const errorObj = new Error(typeof error === 'string' ? error : 'Request failed');
+  const errorMessage = (typeof error === 'string' && error) ? error : 'Request failed';
+  const errorObj = new Error(errorMessage);
   Object.assign(errorObj, response);
   return errorObj;
 }
@@ -193,9 +194,8 @@ export class Store {
             // 这是批量操作返回的格式 {data: [...], error: [...]}
             const hasErrors = Array.isArray(result.error) && result.error.some(err => err !== null);
             if (hasErrors) {
-              // 有错误，但不完全失败，返回部分成功的响应
-              const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
-              return createResponse(statusCode, result.data, result.error);
+              // 有错误时，返回失败状态，状态码303，包含数据和错误
+              throw createErrorResponse(HTTP_STATUS.SEE_OTHER, result.error, result.data);
             } else {
               // 全部成功
               const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
@@ -232,8 +232,7 @@ export class Store {
       const fn = compose(this.middlewares, core, this.opt);
       return await fn([method, path, ...args]);
     } catch (error) {
-      // 如果错误已经是我们的响应格式，直接抛出
-      if (error.code && error.success !== undefined) {
+      if (error && error.success !== undefined) {
         throw error;
       }
       // 否则包装为标准错误响应
@@ -276,7 +275,7 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length; i++) {
-      if (Array.isArray(cur) && !isNaN(Number(segs[i]))) {
+      if (Array.isArray(cur)) {
         cur = cur.find(item => String(item.id) === segs[i]);
       } else {
         cur = cur[segs[i]];
@@ -434,7 +433,7 @@ export class JsonAdapter {
         }
         try {
           const newItem = { ...item };
-          newItem.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+          newItem.id = genId();
           arr.push(newItem);
           results.push(newItem);
           errors.push(null);
@@ -461,7 +460,7 @@ export class JsonAdapter {
       const newData = { ...data, [parentIdKey]: isNaN(Number(parentId)) ? parentId : Number(parentId) };
       // 自动分配 id
       const arr = this.data[childTable];
-      newData.id = arr.length ? (arr[arr.length - 1].id + 1) : 1;
+      newData.id = genId();
       arr.push(newData);
       await this.save();
       return newData;
@@ -474,7 +473,7 @@ export class JsonAdapter {
     const key = segs[segs.length - 1];
     if (!cur[key]) cur[key] = [];
     if (!Array.isArray(cur[key])) throw new Error('只能向数组添加');
-    data.id = cur[key].length ? (cur[key][cur[key].length - 1].id + 1) : 1;
+    data.id = genId();
     cur[key].push(data);
     await this.save();
     return data;
@@ -645,8 +644,8 @@ const lite = async (args, next) => {
     return result;
   } catch (error) {
     // 处理错误情况
-    if (error && typeof error === 'object' && error.success !== undefined) {
-      throw error.error;
+    if (error && error.success !== undefined) {
+      throw error;
     }
     // 其他错误
     throw error.message || error;

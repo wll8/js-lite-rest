@@ -570,7 +570,7 @@ export function testMain(JsLiteRest, opt = {}) {
       });
       const newComment = { content: 'c2' };
       const result = await store.post('posts/1/comments', newComment);
-      expect(result.id).to.equal(2);
+      expect(typeof result.id).to.equal('string');
       expect(result.postsId).to.equal(1);
       expect(result.content).to.equal('c2');
       const comments = await store.get('posts/1/comments');
@@ -604,11 +604,18 @@ export function testMain(JsLiteRest, opt = {}) {
         { title: 'b' },
         { id: 99, title: 'should fail' },
       ];
-      const result = await store.post('posts', arr);
-      expect(result.length).to.equal(3);
-      expect(result[0].id).to.equal(1);
-      expect(result[1].id).to.equal(2);
-      expect(result[2]).to.equal(null);
+      const err = await store.post('posts', arr).catch(err => err)
+      expect(err.code).to.equal(303);
+      expect(err.success).to.equal(false);
+      expect(Array.isArray(err.data)).to.equal(true);
+      expect(err.data.length).to.equal(3);
+      expect(typeof err.data[0].id).to.equal('string');
+      expect(typeof err.data[1].id).to.equal('string');
+      expect(err.data[2]).to.equal(null);
+      expect(Array.isArray(err.error)).to.equal(true);
+      expect(err.error[0]).to.equal(null);
+      expect(err.error[1]).to.equal(null);
+      expect(err.error[2]).to.include('不能指定 id');
       const all = await store.get('posts');
       expect(all.length).to.equal(2);
     });
@@ -624,11 +631,18 @@ export function testMain(JsLiteRest, opt = {}) {
         { id: 2, title: 'B', view: 20 },
         { title: 'fail' },
       ];
-      const result = await store.put('posts', arr);
-      expect(result.length).to.equal(3);
-      expect(result[0].title).to.equal('A');
-      expect(result[1].view).to.equal(20);
-      expect(result[2]).to.equal(null);
+      const err = await store.put('posts', arr).catch(err => err);
+      expect(err.code).to.equal(303);
+      expect(err.success).to.equal(false);
+      expect(Array.isArray(err.data)).to.equal(true);
+      expect(err.data.length).to.equal(3);
+      expect(err.data[0].title).to.equal('A');
+      expect(err.data[1].view).to.equal(20);
+      expect(err.data[2]).to.equal(null);
+      expect(Array.isArray(err.error)).to.equal(true);
+      expect(err.error[0]).to.equal(null);
+      expect(err.error[1]).to.equal(null);
+      expect(err.error[2]).to.include('缺少 id');
       const all = await store.get('posts');
       expect(all[0].title).to.equal('A');
       expect(all[1].title).to.equal('B');
@@ -645,11 +659,18 @@ export function testMain(JsLiteRest, opt = {}) {
         { id: 2, title: 'B' },
         { title: 'fail' },
       ];
-      const result = await store.patch('posts', arr);
-      expect(result.length).to.equal(3);
-      expect(result[0].view).to.equal(100);
-      expect(result[1].title).to.equal('B');
-      expect(result[2]).to.equal(null);
+      const err = await store.patch('posts', arr).catch(err => err);
+      expect(err.code).to.equal(303);
+      expect(err.success).to.equal(false);
+      expect(Array.isArray(err.data)).to.equal(true);
+      expect(err.data.length).to.equal(3);
+      expect(err.data[0].view).to.equal(100);
+      expect(err.data[1].title).to.equal('B');
+      expect(err.data[2]).to.equal(null);
+      expect(Array.isArray(err.error)).to.equal(true);
+      expect(err.error[0]).to.equal(null);
+      expect(err.error[1]).to.equal(null);
+      expect(err.error[2]).to.include('缺少 id');
       const all = await store.get('posts');
       expect(all[0].view).to.equal(100);
       expect(all[1].title).to.equal('B');
@@ -922,6 +943,127 @@ export function testMain(JsLiteRest, opt = {}) {
 
   });
 
+  describe('类 http 响应错误格式', () => {
+    let store;
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' },
+        ],
+      });
+    });
+
+    it('get 不存在资源的错误响应格式', async () => {
+      const err = await store.get('book/999').catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('delete 不存在资源的错误响应格式', async () => {
+      const err = await store.delete('book/999').catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('put 不存在资源的错误响应格式', async () => {
+      const err = await store.put('book/999', { title: 'updated' }).catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('patch 不存在资源的错误响应格式', async () => {
+      const err = await store.patch('book/999', { title: 'patched' }).catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('get 不存在的表的错误响应格式', async () => {
+      const err = await store.get('nonexistent').catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('中间件抛出错误的响应格式', async () => {
+      store.use(async (args, next) => {
+        if (args[0] === 'get' && args[1] === 'book/error') {
+          throw new Error('中间件模拟错误');
+        }
+        return await next(args);
+      });
+
+      const err = await store.get('book/error').catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.error).to.include('中间件模拟错误');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('不支持的 HTTP 方法错误响应格式', async () => {
+      const err = await store._request('unsupported', 'book').catch(err => err);
+      
+      expect(err.code).to.be.a('number');
+      expect(err.success).to.equal(false);
+      expect(err.data).to.equal(null);
+      expect(typeof err.error).to.equal('string');
+      expect(err.error).to.include('不支持的 HTTP 方法');
+      expect(err.code < 200 || err.code >= 300).to.equal(true);
+    });
+
+    it('批量操作部分失败的响应格式', async () => {
+      const err = await store.post('book', [
+        { title: 'valid book' },
+        { id: 1, title: 'invalid book with id' },
+        { title: 'another valid book' }
+      ]).catch(err => err);
+      
+      expect(err.code).to.equal(303);
+      expect(err.success).to.equal(false);
+      expect(Array.isArray(err.data)).to.equal(true);
+      expect(Array.isArray(err.error)).to.equal(true);
+      expect(err.error[0]).to.equal(null); 
+      expect(typeof err.error[1]).to.equal('string'); 
+      expect(err.error[2]).to.equal(null); 
+    });
+
+    it('验证错误响应中 success 字段与状态码的一致性', async () => {
+      const err = await store.get('book/999').catch(err => err);
+      
+      const codeFirstDigit = Math.floor(err.code / 100);
+      expect(codeFirstDigit).to.not.equal(2);
+      expect(err.success).to.equal(false);
+    });
+
+    it('单条操作错误时 error 为字符串', async () => {
+      const err = await store.delete('book/999').catch(err => err);
+      
+      expect(typeof err.error).to.equal('string');
+      expect(err.error.length).to.be.greaterThan(0);
+    });
+  });
   describe('Store 配置项', () => {
     it('默认配置项', async () => {
       // 检查默认的 idKeySuffix
@@ -1420,12 +1562,12 @@ export async function testNodeStoreBasic(JsLiteRest) {
       let books = await store.get('book');
       expect(books.length).to.equal(2);
       expect(books[0].title).to.equal('js');
-      // 修改
-      await store.put('book/1', { title: 'html' });
-      let book = await store.get('book/1');
+      const firstBookId = books[0].id;
+      await store.put(`book/${firstBookId}`, { title: 'html' });
+      let book = await store.get(`book/${firstBookId}`);
       expect(book.title).to.equal('html');
-      // 删除
-      await store.delete('book/2');
+      const secondBookId = books[1].id;
+      await store.delete(`book/${secondBookId}`);
       books = await store.get('book');
       expect(books.length).to.equal(1);
       // 检查文件内容
@@ -1454,8 +1596,8 @@ export function testBrowserStore(JsLiteRest) {
         ]
       }, mergedOpt);
       const books = await store.get('books');
-      expect(books.code).to.be(200)
-      && expect(books.data.length).to.equal(2);
+      expect(books.code).to.equal(200);
+      expect(books.data.length).to.equal(2);
     });
   });
   describe('本地存储持久化', () => {
