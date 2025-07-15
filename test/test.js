@@ -35,9 +35,9 @@ const envMap = {
     await setupJSDOM();
     const JsLiteRest = (await import(path)).default;
     testMain(JsLiteRest, {
-      afterEach() {
+      async afterEach() {
         const savePath = `js-lite-rest`
-        window.localStorage.removeItem(savePath);
+        JsLiteRest.lib.localforage.removeItem(savePath);
       }
     });
     testBrowserStore(JsLiteRest);

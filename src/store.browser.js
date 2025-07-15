@@ -1,11 +1,13 @@
 import { Store, interceptor } from './store.js';
+import localforage from 'localforage';
 
 async function load(key) {
-  return JSON.parse(window.localStorage.getItem(key) || '{}');
+  const data = await localforage.getItem(key);
+  return data || {};
 }
 
 async function save(key, data) {
-  window.localStorage.setItem(key, JSON.stringify(data));
+  await localforage.setItem(key, data);
 }
 
 // 创建函数
@@ -18,6 +20,9 @@ async function create(data = {}, opt = {}) {
 
 // 导出 JsLiteRest 对象，包含 create 方法和其他功能
 const JsLiteRest = {
+  lib: {
+    localforage,
+  },
   create,
   Store,
   interceptor

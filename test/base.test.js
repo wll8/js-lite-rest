@@ -1121,39 +1121,38 @@ export function testMain(JsLiteRest, opt = {}) {
         fs.unlinkSync(defaultPath);
 
       } else {
-        // 浏览器环境：验证默认 localStorage key 和实际存储内容
+        // 浏览器环境：验证默认存储 key
         const defaultKey = 'js-lite-rest';
 
         // 清理可能存在的测试数据
-        window.localStorage.removeItem(defaultKey);
+        await JsLiteRest.lib.localforage.removeItem(defaultKey);
 
-        // 传入数据对象，现在也会使用默认的 save 函数
+        // 传入数据对象，使用默认的 save 函数
         const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         });
 
         expect(store.opt.savePath).to.equal(defaultKey);
 
-        // 验证初始数据已经被保存到 localStorage
-        let storedData = window.localStorage.getItem(defaultKey);
-        expect(storedData).to.not.be.null;
+        // 验证初始数据已经被保存
+        let storedData = await JsLiteRest.lib.localforage.getItem(defaultKey);
 
-        let parsedData = JSON.parse(storedData);
-        expect(parsedData.books).to.be.an('array');
-        expect(parsedData.books.length).to.equal(1);
-        expect(parsedData.books[0].title).to.equal('initial book');
+        expect(storedData).to.not.be.null;
+        expect(storedData.books).to.be.an('array');
+        expect(storedData.books.length).to.equal(1);
+        expect(storedData.books[0].title).to.equal('initial book');
 
         // 添加数据触发保存
         await store.post('books', { title: 'new book' });
 
-        // 验证更新后的 localStorage 内容
-        storedData = window.localStorage.getItem(defaultKey);
-        parsedData = JSON.parse(storedData);
-        expect(parsedData.books.length).to.equal(2);
-        expect(parsedData.books[1].title).to.equal('new book');
+        // 验证更新后的存储内容
+        storedData = await JsLiteRest.lib.localforage.getItem(defaultKey);
+        
+        expect(storedData.books.length).to.equal(2);
+        expect(storedData.books[1].title).to.equal('new book');
 
         // 清理测试数据
-        window.localStorage.removeItem(defaultKey);
+        await JsLiteRest.lib.localforage.removeItem(defaultKey);
       }
     });
 
@@ -1220,11 +1219,11 @@ export function testMain(JsLiteRest, opt = {}) {
         fs.unlinkSync(testPath);
 
       } else {
-        // 浏览器环境：测试自定义 localStorage key 和实际存储内容
+        // 浏览器环境：测试自定义存储 key
         const testKey = 'test-custom-key';
 
         // 清理可能存在的测试数据
-        window.localStorage.removeItem(testKey);
+        await JsLiteRest.lib.localforage.removeItem(testKey);
 
         // 传入数据对象和自定义 key
         const store = await JsLiteRest.create({
@@ -1236,25 +1235,24 @@ export function testMain(JsLiteRest, opt = {}) {
         expect(store.opt.savePath).to.equal(testKey);
 
         // 验证初始数据已经被保存到自定义 key
-        let storedData = window.localStorage.getItem(testKey);
+        let storedData = await JsLiteRest.lib.localforage.getItem(testKey);
+        
         expect(storedData).to.not.be.null;
-
-        let parsedData = JSON.parse(storedData);
-        expect(parsedData.books).to.be.an('array');
-        expect(parsedData.books.length).to.equal(1);
-        expect(parsedData.books[0].title).to.equal('initial book');
+        expect(storedData.books).to.be.an('array');
+        expect(storedData.books.length).to.equal(1);
+        expect(storedData.books[0].title).to.equal('initial book');
 
         // 添加数据触发保存
         await store.post('books', { title: 'custom key book' });
 
-        // 验证更新后的 localStorage 内容
-        storedData = window.localStorage.getItem(testKey);
-        parsedData = JSON.parse(storedData);
-        expect(parsedData.books.length).to.equal(2);
-        expect(parsedData.books[1].title).to.equal('custom key book');
+        // 验证更新后的存储内容
+        storedData = await JsLiteRest.lib.localforage.getItem(testKey);
+        
+        expect(storedData.books.length).to.equal(2);
+        expect(storedData.books[1].title).to.equal('custom key book');
 
         // 清理测试数据
-        window.localStorage.removeItem(testKey);
+        await JsLiteRest.lib.localforage.removeItem(testKey);
       }
     });
 
@@ -1602,10 +1600,10 @@ export function testBrowserStore(JsLiteRest) {
   });
   describe('本地存储持久化', () => {
     const TEST_KEY = 'test-browser-store';
-    beforeEach(() => {
-      window.localStorage.removeItem(TEST_KEY);
+    beforeEach(async () => {
+      await JsLiteRest.lib.localforage.removeItem(TEST_KEY);
     });
-    it('localStorage', async () => {
+    it('localforage 存储', async () => {
       const store = await JsLiteRest.create(TEST_KEY);
       // 新增
       const b1 = await store.post('book', { title: 'js' });
@@ -1621,11 +1619,49 @@ export function testBrowserStore(JsLiteRest) {
       await store.delete(`book/${b2.id}`);
       books = await store.get('book');
       expect(books.length).to.equal(1);
-      // 检查 localStorage 内容
-      const raw = JSON.parse(window.localStorage.getItem(TEST_KEY));
-      expect(raw.book.length).to.equal(1);
-
-      expect(raw.book[0].title).to.equal('html');
+      
+      // 验证数据存储在 localforage 中
+      const storedData = await JsLiteRest.lib.localforage.getItem(TEST_KEY);
+      expect(storedData.book.length).to.equal(1);
+      expect(storedData.book[0].title).to.equal('html');
+    });
+    
+    it('localforage 数据体积扩展', async () => {
+      const TEST_KEY_LARGE = 'test-browser-store-large';
+      
+      // 清理可能存在的测试数据
+      await JsLiteRest.lib.localforage.removeItem(TEST_KEY_LARGE);
+      
+      const store = await JsLiteRest.create(TEST_KEY_LARGE);
+      
+      // 逐个创建数据来测试存储能力
+      const bookCount = 50;
+      for (let i = 0; i < bookCount; i++) {
+        const bookData = {
+          title: `Book ${i}`,
+          content: `This is content for book ${i}. `.repeat(20),
+          metadata: {
+            author: `Author ${i}`,
+            category: `Category ${i % 10}`,
+            tags: [`tag${i}`, `tag${i + 1}`]
+          }
+        };
+        
+        await store.post('book', bookData);
+      }
+      
+      // 验证数据完整性
+      const allBooks = await store.get('book');
+      expect(allBooks.length).to.equal(bookCount);
+      expect(allBooks[0].title).to.equal('Book 0');
+      expect(allBooks[bookCount - 1].title).to.equal(`Book ${bookCount - 1}`);
+      
+      // 验证数据确实存储在 localforage 中
+      const localforageData = await JsLiteRest.lib.localforage.getItem(TEST_KEY_LARGE);
+      expect(localforageData).to.not.be.null;
+      expect(localforageData.book.length).to.equal(bookCount);
+      
+      await JsLiteRest.lib.localforage.removeItem(TEST_KEY_LARGE);
     });
   });
 }
