@@ -54,30 +54,37 @@ function getBaseOpt(opt = {}) {
 
 // HTTP 状态码常量
 const HTTP_STATUS = {
-  OK: 200,
-  CREATED: 201,
-  NO_CONTENT: 204,
-  BAD_REQUEST: 400,
-  SEE_OTHER: 303,
-  NOT_FOUND: 404,
-  INTERNAL_SERVER_ERROR: 500
+  OK: { code: 200, message: '成功' },
+  CREATED: { code: 201, message: '已创建' },
+  NO_CONTENT: { code: 204, message: '无内容' },
+  BAD_REQUEST: { code: 400, message: '请求无效' },
+  SEE_OTHER: { code: 303, message: '部分成功' },
+  NOT_FOUND: { code: 404, message: '未找到' },
+  INTERNAL_SERVER_ERROR: { code: 500, message: '服务器内部错误' }
 };
 
 // 创建标准响应格式
-function createResponse(code, data, error = null) {
+function createResponse(code, data, message) {
+  let realCode = code, realMessage = message;
+  if (realMessage == null && typeof code === 'object' && code.code) {
+    realMessage = code.message;
+  }
+  const codeNum = typeof realCode === 'object' ? realCode.code : realCode;
   return {
-    code,
-    success: code >= 200 && code < 300,
+    code: codeNum,
+    success: codeNum >= 200 && codeNum < 300,
     data,
-    error
+    message: realMessage
   };
 }
 
 // 创建错误响应
-function createErrorResponse(code, error, data = null) {
-  const response = createResponse(code, data, error);
-  // 创建一个可以被 catch 捕获的错误对象，但包含响应格式
-  const errorMessage = (typeof error === 'string' && error) ? error : 'Request failed';
+function createErrorResponse(code, message, data = null) {
+  const response = createResponse(code, data, message);
+  response.success = false;
+  const errorMessage = Array.isArray(message)
+    ? (message.find(m => typeof m === 'string' && m) || response.message || 'Request failed')
+    : (typeof message === 'string' && message) ? message : (response.message || 'Request failed');
   const errorObj = new Error(errorMessage);
   Object.assign(errorObj, response);
   return errorObj;
@@ -189,13 +196,13 @@ export class Store {
         // 动态调用适配器方法
         if (typeof this.opt.adapter[method] === 'function') {
           const result = await this.opt.adapter[method](path, ...restArgs);
-          // 处理批量操作的错误格式
+
           if (result && typeof result === 'object' && result.data !== undefined && result.error !== undefined) {
-            // 这是批量操作返回的格式 {data: [...], error: [...]}
-            const hasErrors = Array.isArray(result.error) && result.error.some(err => err !== null);
+            const errors = result.error;
+            const hasErrors = Array.isArray(errors) && errors.some(err => err !== null);
             if (hasErrors) {
               // 有错误时，返回失败状态，状态码303，包含数据和错误
-              throw createErrorResponse(HTTP_STATUS.SEE_OTHER, result.error, result.data);
+              return Promise.reject(createErrorResponse(HTTP_STATUS.SEE_OTHER, errors, result.data));
             } else {
               // 全部成功
               const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
@@ -236,7 +243,7 @@ export class Store {
         throw error;
       }
       // 否则包装为标准错误响应
-      throw createErrorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error.message || error);
+      throw createErrorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, (error && error.message) || error || 'Unknown error');
     }
   }
 }
@@ -446,7 +453,7 @@ export class JsonAdapter {
 
       await this.save();
 
-      // 如果有错误，返回包含错误信息的结果
+      // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
         return { data: results, error: errors };
       }
@@ -510,7 +517,7 @@ export class JsonAdapter {
 
       await this.save();
 
-      // 如果有错误，返回包含错误信息的结果
+      // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
         return { data: results, error: errors };
       }
@@ -556,7 +563,7 @@ export class JsonAdapter {
 
       await this.save();
 
-      // 如果有错误，返回包含错误信息的结果
+      // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
         return { data: results, error: errors };
       }
@@ -608,7 +615,7 @@ export class JsonAdapter {
 
       await this.save();
 
-      // 如果有错误，返回包含错误信息的结果
+      // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
         return { data: results, error: errors };
       }
@@ -638,7 +645,7 @@ const lite = async (args, next) => {
       if (result.success) {
         return result.data;
       } else {
-        throw result.error;
+        throw result.message;
       }
     }
     return result;

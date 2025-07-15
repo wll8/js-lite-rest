@@ -612,10 +612,10 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(typeof err.data[0].id).to.equal('string');
       expect(typeof err.data[1].id).to.equal('string');
       expect(err.data[2]).to.equal(null);
-      expect(Array.isArray(err.error)).to.equal(true);
-      expect(err.error[0]).to.equal(null);
-      expect(err.error[1]).to.equal(null);
-      expect(err.error[2]).to.include('不能指定 id');
+      expect(Array.isArray(err.message)).to.equal(true);
+      expect(err.message[0]).to.equal(null);
+      expect(err.message[1]).to.equal(null);
+      expect(err.message[2]).to.include('不能指定 id');
       const all = await store.get('posts');
       expect(all.length).to.equal(2);
     });
@@ -639,10 +639,10 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.data[0].title).to.equal('A');
       expect(err.data[1].view).to.equal(20);
       expect(err.data[2]).to.equal(null);
-      expect(Array.isArray(err.error)).to.equal(true);
-      expect(err.error[0]).to.equal(null);
-      expect(err.error[1]).to.equal(null);
-      expect(err.error[2]).to.include('缺少 id');
+      expect(Array.isArray(err.message)).to.equal(true);
+      expect(err.message[0]).to.equal(null);
+      expect(err.message[1]).to.equal(null);
+      expect(err.message[2]).to.include('缺少 id');
       const all = await store.get('posts');
       expect(all[0].title).to.equal('A');
       expect(all[1].title).to.equal('B');
@@ -667,10 +667,10 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.data[0].view).to.equal(100);
       expect(err.data[1].title).to.equal('B');
       expect(err.data[2]).to.equal(null);
-      expect(Array.isArray(err.error)).to.equal(true);
-      expect(err.error[0]).to.equal(null);
-      expect(err.error[1]).to.equal(null);
-      expect(err.error[2]).to.include('缺少 id');
+      expect(Array.isArray(err.message)).to.equal(true);
+      expect(err.message[0]).to.equal(null);
+      expect(err.message[1]).to.equal(null);
+      expect(err.message[2]).to.include('缺少 id');
       const all = await store.get('posts');
       expect(all[0].view).to.equal(100);
       expect(all[1].title).to.equal('B');
@@ -960,7 +960,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
+      expect(typeof err.message).to.equal('string');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -970,7 +970,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
+      expect(typeof err.message).to.equal('string');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -980,7 +980,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
+      expect(typeof err.message).to.equal('string');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -990,7 +990,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
+      expect(typeof err.message).to.equal('string');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -1000,7 +1000,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
+      expect(typeof err.message).to.equal('string');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -1017,8 +1017,8 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
-      expect(err.error).to.include('中间件模拟错误');
+      expect(typeof err.message).to.equal('string');
+      expect(err.message).to.include('中间件模拟错误');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -1028,8 +1028,8 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.be.a('number');
       expect(err.success).to.equal(false);
       expect(err.data).to.equal(null);
-      expect(typeof err.error).to.equal('string');
-      expect(err.error).to.include('不支持的 HTTP 方法');
+      expect(typeof err.message).to.equal('string');
+      expect(err.message).to.include('不支持的 HTTP 方法');
       expect(err.code < 200 || err.code >= 300).to.equal(true);
     });
 
@@ -1043,10 +1043,10 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.code).to.equal(303);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
-      expect(Array.isArray(err.error)).to.equal(true);
-      expect(err.error[0]).to.equal(null); 
-      expect(typeof err.error[1]).to.equal('string'); 
-      expect(err.error[2]).to.equal(null); 
+      expect(Array.isArray(err.message)).to.equal(true);
+      expect(err.message[0]).to.equal(null); 
+      expect(typeof err.message[1]).to.equal('string'); 
+      expect(err.message[2]).to.equal(null); 
     });
 
     it('验证错误响应中 success 字段与状态码的一致性', async () => {
@@ -1057,11 +1057,11 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.success).to.equal(false);
     });
 
-    it('单条操作错误时 error 为字符串', async () => {
+    it('单条操作错误时 message 为字符串', async () => {
       const err = await store.delete('book/999').catch(err => err);
       
-      expect(typeof err.error).to.equal('string');
-      expect(err.error.length).to.be.greaterThan(0);
+      expect(typeof err.message).to.equal('string');
+      expect(err.message.length).to.be.greaterThan(0);
     });
   });
   describe('Store 配置项', () => {
@@ -1580,7 +1580,7 @@ export async function testNodeStoreBasic(JsLiteRest) {
 
 export function testBrowserStore(JsLiteRest) {
   describe('使用原始 Store 类', () => { 
-    it.only('创建 Store 实例', async () => { 
+    it('创建 Store 实例', async () => { 
       async function load(key) {
         return JSON.parse(window.localStorage.getItem(key) || '{}');
       }
@@ -1595,9 +1595,9 @@ export function testBrowserStore(JsLiteRest) {
           { id: 2, title: 'Book 2' }
         ]
       }, mergedOpt);
-      const books = await store.get('books');
-      expect(books.code).to.equal(200);
-      expect(books.data.length).to.equal(2);
+      const res = await store.get('books');
+      expect(res.code).to.equal(200);
+      expect(res.data.length).to.equal(2);
     });
   });
   describe('本地存储持久化', () => {
@@ -1608,17 +1608,17 @@ export function testBrowserStore(JsLiteRest) {
     it('localStorage', async () => {
       const store = await JsLiteRest.create(TEST_KEY);
       // 新增
-      await store.post('book', { title: 'js' });
-      await store.post('book', { title: 'css' });
+      const b1 = await store.post('book', { title: 'js' });
+      const b2 = await store.post('book', { title: 'css' });
       let books = await store.get('book');
       expect(books.length).to.equal(2);
       expect(books[0].title).to.equal('js');
       // 修改
-      await store.put('book/1', { title: 'html' });
-      let book = await store.get('book/1');
+      await store.put(`book/${b1.id}`, { title: 'html' })
+      let book = await store.get(`book/${b1.id}`)
       expect(book.title).to.equal('html');
       // 删除
-      await store.delete('book/2');
+      await store.delete(`book/${b2.id}`);
       books = await store.get('book');
       expect(books.length).to.equal(1);
       // 检查 localStorage 内容
