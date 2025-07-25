@@ -47,6 +47,7 @@ function getBaseOpt(opt = {}) {
   const newOpt = {
     idKeySuffix: 'Id',
     savePath: typeof window === 'undefined' ? `js-lite-rest.json` : `js-lite-rest`,
+    overwrite: false, // 默认不覆盖已有数据
     ...opt,
   }
   return newOpt
@@ -135,23 +136,37 @@ export class Store {
 
   async _initialize(data = {}, opt = {}) {
     let shouldSaveInitialData = false;
+    let finalData = data;
 
     if(typeof data === `string`) {
       this.opt.savePath = data;
       // 异步加载数据
       if (this.opt.load) {
-        data = await this.opt.load(this.opt.savePath);
+        finalData = await this.opt.load(this.opt.savePath);
       } else {
         throw new Error('load 方法未定义');
       }
     } else {
-      // 传入数据对象时，也需要进行初始保存
+      // 传入数据对象时的处理
+      // 当有 savePath（包括默认值）、有 load 函数且不覆盖时，才进行数据合并
+      if (this.opt.savePath && this.opt.load && !this.opt.overwrite) {
+        // 如果有 savePath、load 函数且不覆盖，则需要合并数据
+        try {
+          const existingData = await this.opt.load(this.opt.savePath);
+          // 合并数据：存在的 key 不覆盖，新的 key 添加
+          finalData = this._mergeData(existingData, data);
+        } catch (error) {
+          // 如果加载失败（如文件不存在），使用传入的数据
+          finalData = data;
+        }
+      }
+      // 传入数据对象时，需要进行初始保存
       shouldSaveInitialData = true;
     }
 
     // 即使是直接传入数据对象，也要等待一个微任务，确保初始化的一致性
     await Promise.resolve();
-    this.opt.adapter = this.opt.adapter || new JsonAdapter(data, this.opt);
+    this.opt.adapter = this.opt.adapter || new JsonAdapter(finalData, this.opt);
 
     // 如果传入的是数据对象且有 save 函数，进行初始保存
     if (shouldSaveInitialData && this.opt.save && this.opt.savePath) {
@@ -167,6 +182,24 @@ export class Store {
       await this._initPromise;
       this._initPromise = null;
     }
+  }
+
+  // 合并数据的辅助方法：existing 数据优先，新数据中不存在的 key 才会被添加
+  _mergeData(existingData, newData) {
+    const result = { ...existingData };
+    
+    // 遍历新数据的每个 key
+    for (const key in newData) {
+      if (newData.hasOwnProperty(key)) {
+        if (!result.hasOwnProperty(key)) {
+          // 如果现有数据中没有这个 key，则添加
+          result[key] = newData[key];
+        }
+        // 如果现有数据中已有这个 key，则保持现有数据不变（不覆盖）
+      }
+    }
+    
+    return result;
   }
 
   use(middleware) {

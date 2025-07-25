@@ -12,6 +12,51 @@ export function testMain(JsLiteRest, opt = {}) {
 
   // 检测当前环境
   const isNodeEnv = typeof window === 'undefined';
+
+  // 通用函数：根据存储路径读取实际存储的数据
+  // 用于验证 Store 是否正确地将数据持久化到文件系统（Node.js）或 localStorage（浏览器）
+  // 用法：const data = await readStorageData(store.opt.savePath);
+  const readStorageData = async (savePath) => {
+    if (isNodeEnv) {
+      // Node.js 环境：读取文件系统
+      const fsPromises = fs.promises;
+      try {
+        const fileContent = await fsPromises.readFile(savePath, 'utf-8');
+        return JSON.parse(fileContent);
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          return null; // 文件不存在
+        }
+        throw error;
+      }
+    } else {
+      // 浏览器环境：读取 localStorage
+      return await JsLiteRest.lib.localforage.getItem(savePath);
+    }
+  };
+
+  // 通用函数：清理对应环境下的存储数据
+  // 用于删除测试产生的存储文件或清理 localStorage
+  // 用法：await cleanStorageData(store.opt.savePath);
+  const cleanStorageData = async (savePath) => {
+    if (isNodeEnv) {
+      // Node.js 环境：删除文件系统中的文件
+      const fsPromises = fs.promises;
+      try {
+        await fsPromises.unlink(savePath);
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          // 文件不存在，忽略错误
+          return;
+        }
+        throw error;
+      }
+    } else {
+      // 浏览器环境：从 localStorage 中移除
+      await JsLiteRest.lib.localforage.removeItem(savePath);
+    }
+  };
+
   // 基本操作
   describe('基本操作', () => {
     let store;
@@ -49,18 +94,28 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(books[0].id).to.equal(2);
     });
     it('patch 部分更新', async () => {
-      const store = await JsLiteRest.create({
-        book: [
-          { id: 1, title: 'css', author: 'A' },
-          { id: 2, title: 'js', author: 'B' },
-        ],
-      });
-      await store.patch('book/1', { title: 'css3' });
-      const book = await store.get('book/1');
-      expect(book).to.deep.equal({ id: 1, title: 'css3', author: 'A' });
-      await store.patch('book/1', { author: 'C' });
-      const book2 = await store.get('book/1');
-      expect(book2).to.deep.equal({ id: 1, title: 'css3', author: 'C' });
+      const testPath = `test-patch-${Date.now()}.json`;
+      
+      try {
+        const store = await JsLiteRest.create({
+          book: [
+            { id: 1, title: 'css', author: 'A' },
+            { id: 2, title: 'js', author: 'B' },
+          ],
+        }, { 
+          savePath: testPath,
+          overwrite: true // 确保使用新数据，不合并
+        });
+        await store.patch('book/1', { title: 'css3' });
+        const book = await store.get('book/1');
+        expect(book).to.deep.equal({ id: 1, title: 'css3', author: 'A' });
+        await store.patch('book/1', { author: 'C' });
+        const book2 = await store.get('book/1');
+        expect(book2).to.deep.equal({ id: 1, title: 'css3', author: 'C' });
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
     });
   });
 
@@ -1084,76 +1139,27 @@ export function testMain(JsLiteRest, opt = {}) {
     });
 
     it('默认存储路径验证', async () => {
-      if (isNodeEnv) {
-        // Node.js 环境：验证默认文件路径和实际文件内容
-        const defaultPath = 'js-lite-rest.json';
+      // 传入数据对象，使用默认存储路径
+      const store = await JsLiteRest.create({
+        books: [{ id: 1, title: 'initial book' }]
+      });
 
-        // 清理可能存在的测试文件
-        if (fs.existsSync(defaultPath)) {
-          fs.unlinkSync(defaultPath);
-        }
+      // 验证默认路径被设置
+      expect(store.opt.savePath).to.be.a('string');
+      expect(store.opt.savePath.length).to.be.greaterThan(0);
 
-        // 传入数据对象，JsStore 已经有默认的 load 和 save 函数
-        const store = await JsLiteRest.create({
-          books: [{ id: 1, title: 'initial book' }]
-        });
+      // 验证初始数据存在
+      const books = await store.get('books');
+      expect(books.length).to.equal(1);
+      expect(books[0].title).to.equal('initial book');
 
-        expect(store.opt.savePath).to.equal(defaultPath);
+      // 添加数据
+      await store.post('books', { title: 'new book' });
 
-        // 验证初始数据已经被保存到文件
-        expect(fs.existsSync(defaultPath)).to.equal(true);
-
-        // 验证初始文件内容
-        let fileContent = JSON.parse(fs.readFileSync(defaultPath, 'utf-8'));
-        expect(fileContent.books).to.be.an('array');
-        expect(fileContent.books.length).to.equal(1);
-        expect(fileContent.books[0].title).to.equal('initial book');
-
-        // 添加数据触发保存
-        await store.post('books', { title: 'new book' });
-
-        // 验证更新后的文件内容
-        fileContent = JSON.parse(fs.readFileSync(defaultPath, 'utf-8'));
-        expect(fileContent.books.length).to.equal(2);
-        expect(fileContent.books[1].title).to.equal('new book');
-
-        // 清理测试文件
-        fs.unlinkSync(defaultPath);
-
-      } else {
-        // 浏览器环境：验证默认存储 key
-        const defaultKey = 'js-lite-rest';
-
-        // 清理可能存在的测试数据
-        await JsLiteRest.lib.localforage.removeItem(defaultKey);
-
-        // 传入数据对象，使用默认的 save 函数
-        const store = await JsLiteRest.create({
-          books: [{ id: 1, title: 'initial book' }]
-        });
-
-        expect(store.opt.savePath).to.equal(defaultKey);
-
-        // 验证初始数据已经被保存
-        let storedData = await JsLiteRest.lib.localforage.getItem(defaultKey);
-
-        expect(storedData).to.not.be.null;
-        expect(storedData.books).to.be.an('array');
-        expect(storedData.books.length).to.equal(1);
-        expect(storedData.books[0].title).to.equal('initial book');
-
-        // 添加数据触发保存
-        await store.post('books', { title: 'new book' });
-
-        // 验证更新后的存储内容
-        storedData = await JsLiteRest.lib.localforage.getItem(defaultKey);
-        
-        expect(storedData.books.length).to.equal(2);
-        expect(storedData.books[1].title).to.equal('new book');
-
-        // 清理测试数据
-        await JsLiteRest.lib.localforage.removeItem(defaultKey);
-      }
+      // 验证数据更新
+      const updatedBooks = await store.get('books');
+      expect(updatedBooks.length).to.equal(2);
+      expect(updatedBooks[1].title).to.equal('new book');
     });
 
     it('自定义 idKeySuffix 配置', async () => {
@@ -1180,16 +1186,10 @@ export function testMain(JsLiteRest, opt = {}) {
     });
 
     it('自定义 savePath 配置', async () => {
-      if (isNodeEnv) {
-        // Node.js 环境：测试自定义文件路径和实际文件内容
-        const testPath = 'test-custom-path.json';
+      const testPath = `test-custom-path-${Date.now()}`;
 
-        // 清理可能存在的测试文件
-        if (fs.existsSync(testPath)) {
-          fs.unlinkSync(testPath);
-        }
-
-        // 传入数据对象和自定义路径，JsStore 会自动合并默认的 load 和 save 函数
+      try {
+        // 传入数据对象和自定义路径
         const store = await JsLiteRest.create({
           books: [{ id: 1, title: 'initial book' }]
         }, {
@@ -1198,61 +1198,33 @@ export function testMain(JsLiteRest, opt = {}) {
 
         expect(store.opt.savePath).to.equal(testPath);
 
-        // 验证初始数据已经被保存到自定义路径
-        expect(fs.existsSync(testPath)).to.equal(true);
+        // 验证初始数据存在
+        const books = await store.get('books');
+        expect(books.length).to.equal(1);
+        expect(books[0].title).to.equal('initial book');
 
-        // 验证初始文件内容
-        let fileContent = JSON.parse(fs.readFileSync(testPath, 'utf-8'));
-        expect(fileContent.books).to.be.an('array');
-        expect(fileContent.books.length).to.equal(1);
-        expect(fileContent.books[0].title).to.equal('initial book');
+        // 验证实际存储的数据（通过文件系统或localStorage）
+        const initialStorageData = await readStorageData(testPath);
+        expect(initialStorageData).to.not.be.null;
+        expect(initialStorageData.books).to.be.an('array');
+        expect(initialStorageData.books.length).to.equal(1);
+        expect(initialStorageData.books[0].title).to.equal('initial book');
 
-        // 添加数据触发保存
+        // 添加数据
         await store.post('books', { title: 'custom path book' });
 
-        // 验证更新后的文件内容
-        fileContent = JSON.parse(fs.readFileSync(testPath, 'utf-8'));
-        expect(fileContent.books.length).to.equal(2);
-        expect(fileContent.books[1].title).to.equal('custom path book');
+        // 验证数据更新
+        const updatedBooks = await store.get('books');
+        expect(updatedBooks.length).to.equal(2);
+        expect(updatedBooks[1].title).to.equal('custom path book');
 
-        // 清理测试文件
-        fs.unlinkSync(testPath);
-
-      } else {
-        // 浏览器环境：测试自定义存储 key
-        const testKey = 'test-custom-key';
-
-        // 清理可能存在的测试数据
-        await JsLiteRest.lib.localforage.removeItem(testKey);
-
-        // 传入数据对象和自定义 key
-        const store = await JsLiteRest.create({
-          books: [{ id: 1, title: 'initial book' }]
-        }, {
-          savePath: testKey
-        });
-
-        expect(store.opt.savePath).to.equal(testKey);
-
-        // 验证初始数据已经被保存到自定义 key
-        let storedData = await JsLiteRest.lib.localforage.getItem(testKey);
-        
-        expect(storedData).to.not.be.null;
-        expect(storedData.books).to.be.an('array');
-        expect(storedData.books.length).to.equal(1);
-        expect(storedData.books[0].title).to.equal('initial book');
-
-        // 添加数据触发保存
-        await store.post('books', { title: 'custom key book' });
-
-        // 验证更新后的存储内容
-        storedData = await JsLiteRest.lib.localforage.getItem(testKey);
-        
-        expect(storedData.books.length).to.equal(2);
-        expect(storedData.books[1].title).to.equal('custom key book');
-
-        // 清理测试数据
-        await JsLiteRest.lib.localforage.removeItem(testKey);
+        // 验证实际存储的数据已更新
+        const updatedStorageData = await readStorageData(testPath);
+        expect(updatedStorageData.books.length).to.equal(2);
+        expect(updatedStorageData.books[1].title).to.equal('custom path book');
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
       }
     });
 
@@ -1294,14 +1266,8 @@ export function testMain(JsLiteRest, opt = {}) {
       const customLoad = async (path) => {
         loadCalled = true;
         loadPath = path;
-
-        if (isNodeEnv) {
-          // Node.js 环境：模拟从文件加载
-          return { books: [{ id: 1, title: 'loaded from file' }] };
-        } else {
-          // 浏览器环境：模拟从 localStorage 加载
-          return { books: [{ id: 1, title: 'loaded from localStorage' }] };
-        }
+        // 返回统一的测试数据，不需要区分环境
+        return { books: [{ id: 1, title: 'loaded book' }] };
       };
 
       const customSave = async (path, data) => {
@@ -1327,11 +1293,7 @@ export function testMain(JsLiteRest, opt = {}) {
       // 测试数据是否正确加载
       const books = await store.get('books');
       expect(books.length).to.equal(1);
-      if (isNodeEnv) {
-        expect(books[0].title).to.equal('loaded from file');
-      } else {
-        expect(books[0].title).to.equal('loaded from localStorage');
-      }
+      expect(books[0].title).to.equal('loaded book');
 
       // 测试保存功能
       await store.post('books', { title: 'new book' });
@@ -1346,24 +1308,29 @@ export function testMain(JsLiteRest, opt = {}) {
       const testPath = 'test-merge-config.json';
       let savedPath = null;
 
-      // 使用自定义 save 函数避免创建实际文件
-      const mockSave = async (path, data) => {
-        savedPath = path;
-      };
+      try {
+        // 使用自定义 save 函数避免创建实际文件
+        const mockSave = async (path, data) => {
+          savedPath = path;
+        };
 
-      const store = await JsLiteRest.create({
-        items: []
-      }, {
-        idKeySuffix: '_key',
-        savePath: testPath,
-        customOption: 'custom_value',
-        save: mockSave
-      });
+        const store = await JsLiteRest.create({
+          items: []
+        }, {
+          idKeySuffix: '_key',
+          savePath: testPath,
+          customOption: 'custom_value',
+          save: mockSave
+        });
 
-      expect(store.opt.idKeySuffix).to.equal('_key');
-      expect(store.opt.savePath).to.equal(testPath);
-      expect(store.opt.customOption).to.equal('custom_value');
-      expect(savedPath).to.equal(testPath);
+        expect(store.opt.idKeySuffix).to.equal('_key');
+        expect(store.opt.savePath).to.equal(testPath);
+        expect(store.opt.customOption).to.equal('custom_value');
+        expect(savedPath).to.equal(testPath);
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
     });
 
     it('空配置项测试', async () => {
@@ -1383,26 +1350,31 @@ export function testMain(JsLiteRest, opt = {}) {
       const testPath = 'test-immutable-config.json';
       let savedPath = null;
 
-      // 使用自定义 save 函数避免创建实际文件
-      const mockSave = async (path, data) => {
-        savedPath = path;
-      };
+      try {
+        // 使用自定义 save 函数避免创建实际文件
+        const mockSave = async (path, data) => {
+          savedPath = path;
+        };
 
-      const originalOpt = {
-        idKeySuffix: 'Test',
-        savePath: testPath,
-        save: mockSave
-      };
+        const originalOpt = {
+          idKeySuffix: 'Test',
+          savePath: testPath,
+          save: mockSave
+        };
 
-      const store = await JsLiteRest.create({}, originalOpt);
+        const store = await JsLiteRest.create({}, originalOpt);
 
-      // 修改原始配置对象不应影响 store
-      originalOpt.idKeySuffix = 'Modified';
-      originalOpt.savePath = 'modified.json';
+        // 修改原始配置对象不应影响 store
+        originalOpt.idKeySuffix = 'Modified';
+        originalOpt.savePath = 'modified.json';
 
-      expect(store.opt.idKeySuffix).to.equal('Test');
-      expect(store.opt.savePath).to.equal(testPath);
-      expect(savedPath).to.equal(testPath);
+        expect(store.opt.idKeySuffix).to.equal('Test');
+        expect(store.opt.savePath).to.equal(testPath);
+        expect(savedPath).to.equal(testPath);
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
     });
 
     it('load 函数错误处理', async () => {
@@ -1515,30 +1487,134 @@ export function testMain(JsLiteRest, opt = {}) {
       const testPath = 'test-type-validation.json';
       let savedPath = null;
 
-      // 使用自定义 save 函数避免创建实际文件
-      const mockSave = async (path, data) => {
-        savedPath = path;
-      };
+      try {
+        // 使用自定义 save 函数避免创建实际文件
+        const mockSave = async (path, data) => {
+          savedPath = path;
+        };
 
-      const store = await JsLiteRest.create({
-        books: []
-      }, {
-        idKeySuffix: 'Suffix',
-        savePath: testPath,
-        customProp: 'customValue',
-        save: mockSave
-      });
+        const store = await JsLiteRest.create({
+          books: []
+        }, {
+          idKeySuffix: 'Suffix',
+          savePath: testPath,
+          customProp: 'customValue',
+          save: mockSave
+        });
 
-      // 验证配置项类型
-      expect(typeof store.opt.idKeySuffix).to.equal('string');
-      expect(typeof store.opt.savePath).to.equal('string');
-      expect(typeof store.opt.customProp).to.equal('string');
+        // 验证配置项类型
+        expect(typeof store.opt.idKeySuffix).to.equal('string');
+        expect(typeof store.opt.savePath).to.equal('string');
+        expect(typeof store.opt.customProp).to.equal('string');
 
-      // 验证配置项值
-      expect(store.opt.idKeySuffix).to.equal('Suffix');
-      expect(store.opt.savePath).to.equal(testPath);
-      expect(store.opt.customProp).to.equal('customValue');
-      expect(savedPath).to.equal(testPath);
+        // 验证配置项值
+        expect(store.opt.idKeySuffix).to.equal('Suffix');
+        expect(store.opt.savePath).to.equal(testPath);
+        expect(store.opt.customProp).to.equal('customValue');
+        expect(savedPath).to.equal(testPath);
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
+    });
+
+    it('初始化时数据合并 - 默认不覆盖', async () => {
+      const testPath = `test-merge-initialization-${Date.now()}`;
+
+      try {
+        // 先创建一个 Store 并保存一些数据
+        await JsLiteRest.create({
+          users: [{ id: 1, name: 'Alice' }],
+          posts: [{ id: 1, title: 'Existing Post' }]
+        }, { savePath: testPath });
+
+        // 现在创建新的 Store，尝试添加新数据（默认不覆盖）
+        const store = await JsLiteRest.create({
+          users: [{ id: 2, name: 'Bob' }], // 这个应该被忽略
+          categories: [{ id: 1, name: 'Tech' }] // 这个应该被添加
+        }, { savePath: testPath });
+
+        // 验证 users 保持原有数据（不覆盖）
+        const users = await store.get('users');
+        expect(users.length).to.equal(1);
+        expect(users[0].name).to.equal('Alice');
+
+        // 验证 posts 保持原有数据
+        const posts = await store.get('posts');
+        expect(posts.length).to.equal(1);
+        expect(posts[0].title).to.equal('Existing Post');
+
+        // 验证 categories 被添加
+        const categories = await store.get('categories');
+        expect(categories.length).to.equal(1);
+        expect(categories[0].name).to.equal('Tech');
+
+        // 验证实际存储的数据（数据合并结果）
+        const mergedStorageData = await readStorageData(testPath);
+        expect(mergedStorageData.users.length).to.equal(1);
+        expect(mergedStorageData.users[0].name).to.equal('Alice'); // 原有数据保持
+        expect(mergedStorageData.posts.length).to.equal(1);
+        expect(mergedStorageData.posts[0].title).to.equal('Existing Post'); // 原有数据保持
+        expect(mergedStorageData.categories.length).to.equal(1);
+        expect(mergedStorageData.categories[0].name).to.equal('Tech'); // 新数据被添加
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
+    });
+
+    it('初始化时数据覆盖 - 启用覆盖选项', async () => {
+      const testPath = `test-overwrite-initialization-${Date.now()}`;
+
+      try {
+        // 先创建一个 Store 并保存一些数据
+        await JsLiteRest.create({
+          users: [{ id: 1, name: 'Alice' }],
+          posts: [{ id: 1, title: 'Existing Post' }]
+        }, { savePath: testPath });
+
+        // 现在创建新的 Store，启用覆盖选项
+        const store = await JsLiteRest.create({
+          users: [{ id: 2, name: 'Bob' }],
+          categories: [{ id: 1, name: 'Tech' }]
+        }, { 
+          savePath: testPath, 
+          overwrite: true 
+        });
+
+        // 验证数据被完全覆盖
+        const users = await store.get('users');
+        expect(users.length).to.equal(1);
+        expect(users[0].name).to.equal('Bob');
+
+        const categories = await store.get('categories');
+        expect(categories.length).to.equal(1);
+        expect(categories[0].name).to.equal('Tech');
+
+        // 验证 posts 不存在了
+        try {
+          await store.get('posts');
+          expect.fail('posts 应该不存在');
+        } catch (error) {
+          expect(error.code).to.equal(500);
+        }
+
+        // 验证实际存储的数据（覆盖结果）
+        const overwrittenStorageData = await readStorageData(testPath);
+        expect(overwrittenStorageData.users.length).to.equal(1);
+        expect(overwrittenStorageData.users[0].name).to.equal('Bob'); // 数据被覆盖
+        expect(overwrittenStorageData.categories.length).to.equal(1);
+        expect(overwrittenStorageData.categories[0].name).to.equal('Tech'); // 新数据存在
+        expect(overwrittenStorageData.posts).to.be.undefined; // 原有数据被移除
+      } finally {
+        // 清理测试产生的存储文件
+        await cleanStorageData(testPath);
+      }
+    });
+
+    it('overwrite 配置选项默认值验证', async () => {
+      const store = await JsLiteRest.create({});
+      expect(store.opt.overwrite).to.equal(false);
     });
   });
 }

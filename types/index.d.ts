@@ -14,6 +14,8 @@ export interface StoreOptions {
   save?: (key: string, data: any) => Promise<void>;
   /** 自定义适配器 */
   adapter?: Adapter;
+  /** 是否覆盖已有数据，默认为 false（不覆盖） */
+  overwrite?: boolean;
 }
 
 /**
