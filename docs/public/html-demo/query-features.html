@@ -1,17 +1,66 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>查询功能 - js-lite-rest</title>
-    <!-- UnoCSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
-    <!-- js-lite-rest UMD -->
-    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>查询功能 - js-lite-rest</title>
+  <!-- Vue 3 UMD -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- Mock.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mockjs@1.1.0/dist/mock.js"></script>
+  <!-- js-lite-rest UMD -->
+  <script src="../../../dist/js-lite-rest.browser.umd.js"></script>
+  <style>
+    /* 初始白屏样式，防止未样式化的内容闪烁 */
+    body {
+      background: #f9fafb;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 在UnoCSS加载前完全隐藏所有内容，只显示白屏 */
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* UnoCSS加载完成后显示内容 */
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
+  <div id="app">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">正在初始化...</h2>
+        <p class="text-gray-500">{{ loadingMessage }}</p>
+      </div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div v-else class="container mx-auto px-4 py-8">
         <header class="mb-8">
             <nav class="mb-4">
                 <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
@@ -30,22 +79,18 @@
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">基础过滤</h3>
                         <div class="space-y-3">
-                            <select id="categoryFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <select v-model="filters.category" @change="executeQuery" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">所有分类</option>
-                                <option value="电子产品">电子产品</option>
-                                <option value="服装">服装</option>
-                                <option value="食品">食品</option>
-                                <option value="图书">图书</option>
-                                <option value="家居">家居</option>
+                                <option v-for="category in CONFIG.categories" :key="category" :value="category">
+                                    {{ category }}
+                                </option>
                             </select>
                             
-                            <select id="brandFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <select v-model="filters.brand" @change="executeQuery" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">所有品牌</option>
-                                <option value="Apple">Apple</option>
-                                <option value="Samsung">Samsung</option>
-                                <option value="华为">华为</option>
-                                <option value="小米">小米</option>
-                                <option value="Nike">Nike</option>
+                                <option v-for="brand in CONFIG.brands" :key="brand" :value="brand">
+                                    {{ brand }}
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -54,11 +99,11 @@
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">价格范围</h3>
                         <div class="space-y-2">
-                            <div class="flex space-x-2">
-                                <input type="number" id="minPrice" placeholder="最低价格" 
-                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <input type="number" id="maxPrice" placeholder="最高价格" 
-                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" v-model="filters.minPrice" @input="executeQuery" placeholder="最低价格" 
+                                       class="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="number" v-model="filters.maxPrice" @input="executeQuery" placeholder="最高价格" 
+                                       class="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
                         </div>
                     </div>
@@ -66,25 +111,20 @@
                     <!-- 评分过滤 -->
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">最低评分</h3>
-                        <select id="ratingFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">不限</option>
-                            <option value="4.5">4.5 星以上</option>
-                            <option value="4.0">4.0 星以上</option>
-                            <option value="3.5">3.5 星以上</option>
-                            <option value="3.0">3.0 星以上</option>
+                        <select v-model="filters.rating" @change="executeQuery" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option v-for="option in CONFIG.ratingOptions" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
                         </select>
                     </div>
 
                     <!-- 排序 -->
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">排序方式</h3>
-                        <select id="sortBy" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">默认排序</option>
-                            <option value="price:asc">价格：低到高</option>
-                            <option value="price:desc">价格：高到低</option>
-                            <option value="rating:desc">评分：高到低</option>
-                            <option value="name:asc">名称：A-Z</option>
-                            <option value="createdAt:desc">时间：最新</option>
+                        <select v-model="sortBy" @change="executeQuery" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option v-for="option in CONFIG.sortOptions" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
                         </select>
                     </div>
 
@@ -92,22 +132,21 @@
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">分页设置</h3>
                         <div class="space-y-2">
-                            <select id="pageSize" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="10">每页 10 条</option>
-                                <option value="20" selected>每页 20 条</option>
-                                <option value="50">每页 50 条</option>
-                                <option value="100">每页 100 条</option>
+                            <select v-model="pageSize" @change="changePageSize" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option v-for="option in CONFIG.pageSizeOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
                             </select>
                             <div class="flex space-x-2">
-                                <button onclick="changePage(-1)" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                                <button @click="changePage(-1)" :disabled="currentPage <= 1" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors disabled:bg-gray-400">
                                     上一页
                                 </button>
-                                <button onclick="changePage(1)" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                                <button @click="changePage(1)" :disabled="currentPage >= totalPages" class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors disabled:bg-gray-400">
                                     下一页
                                 </button>
                             </div>
-                            <div id="pageInfo" class="text-sm text-gray-600 text-center">
-                                第 1 页，共 0 页
+                            <div class="text-sm text-gray-600 text-center">
+                                第 {{ currentPage }} 页，共 {{ totalPages }} 页
                             </div>
                         </div>
                     </div>
@@ -115,17 +154,13 @@
                     <!-- 全文搜索 -->
                     <div class="mb-6">
                         <h3 class="font-medium mb-3">全文搜索</h3>
-                        <input type="text" id="searchQuery" placeholder="搜索产品..." 
+                        <input type="text" v-model="searchQuery" @input="executeQuery" placeholder="搜索产品..." 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <!-- 操作按钮 -->
                     <div class="space-y-2">
-                        <button onclick="executeQuery()" 
-                                class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
-                            执行查询
-                        </button>
-                        <button onclick="resetFilters()" 
+                        <button @click="resetFilters" 
                                 class="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
                             重置筛选
                         </button>
@@ -139,13 +174,49 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold">查询结果</h2>
                         <div class="flex items-center space-x-4">
-                            <span id="resultCount" class="text-sm text-gray-500">共 0 个结果</span>
-                            <span id="queryTime" class="text-sm text-gray-500"></span>
+                            <span class="text-sm text-gray-500">共 {{ totalResults }} 个结果</span>
+                            <span class="text-sm text-gray-500">{{ queryTime }}ms</span>
                         </div>
                     </div>
                     
-                    <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- 产品列表将在这里显示 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="product in products" :key="product.id" class="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                            <!-- 产品头部信息 -->
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-lg text-gray-800 leading-tight">{{ product.name }}</h3>
+                                    <div class="flex items-center mt-1">
+                                        <span class="text-yellow-500">{{ '★'.repeat(Math.floor(product.rating)) }}</span>
+                                        <span class="text-sm text-gray-500 ml-1">{{ product.rating }}</span>
+                                        <span class="text-sm text-gray-400 ml-2" v-if="product.sales">销量: {{ product.sales }}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-red-600">¥{{ product.price }}</div>
+                                    <div v-if="product.discount < 1" class="text-xs text-green-600">{{ Math.round(product.discount * 10) }}折</div>
+                                </div>
+                            </div>
+                            
+                            <!-- 分类和品牌标签 -->
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{{ product.category }}</span>
+                                <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">{{ product.brand }}</span>
+                                <span v-for="tag in (product.tags || []).slice(2)" :key="tag" class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{{ tag }}</span>
+                            </div>
+                            
+                            <!-- 产品描述 -->
+                            <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ product.description }}</p>
+                            
+                            <!-- 底部信息 -->
+                            <div class="flex justify-between items-center text-xs text-gray-500 pt-2 border-t">
+                                <span>库存: {{ product.stock }}</span>
+                                <span>{{ product.createdAt }}</span>
+                            </div>
+                        </div>
+                        
+                        <div v-if="products.length === 0" class="col-span-full text-center py-8 text-gray-500">
+                            没有找到符合条件的产品
+                        </div>
                     </div>
                 </div>
             </div>
@@ -155,310 +226,359 @@
         <div class="mt-8 bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">查询历史</h2>
-                <button onclick="clearQueryHistory()" class="text-sm text-red-600 hover:text-red-800">清空历史</button>
+                <button @click="clearQueryHistory" class="text-sm text-red-600 hover:text-red-800">清空历史</button>
             </div>
-            <div id="queryHistory" class="space-y-2 max-h-48 overflow-y-auto">
-                <!-- 查询历史将在这里显示 -->
+            <div class="space-y-2 max-h-48 overflow-y-auto">
+                <div v-for="(query, index) in queryHistory" :key="index" class="text-sm p-2 bg-gray-50 rounded">
+                    <div class="font-medium">{{ query.params }}</div>
+                    <div class="text-gray-500">{{ query.results }} 个结果 - {{ query.time }}ms - {{ query.timestamp }}</div>
+                </div>
+                <div v-if="queryHistory.length === 0" class="text-center py-4 text-gray-500">
+                    暂无查询历史
+                </div>
             </div>
         </div>
 
         <!-- 查询统计 -->
         <div class="mt-8 bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold mb-4">查询统计</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="queryStats">
-                <!-- 统计数据将在这里显示 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">{{ queryStats.totalQueries }}</div>
+                    <div class="text-sm text-blue-800">总查询次数</div>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">{{ queryStats.avgQueryTime }}ms</div>
+                    <div class="text-sm text-green-800">平均查询时间</div>
+                </div>
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600">{{ queryStats.totalResults }}</div>
+                    <div class="text-sm text-purple-800">总结果数量</div>
+                </div>
+                <div class="text-center p-4 bg-orange-50 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600">{{ queryStats.fastestQuery === Infinity ? 0 : queryStats.fastestQuery }}ms</div>
+                    <div class="text-sm text-orange-800">最快查询</div>
+                </div>
             </div>
         </div>
     </div>
+  </div>
 
-    <script>
-        let store;
-        let currentPage = 1;
-        let totalPages = 1;
-        let queryHistory = [];
-        let queryStats = {
-            totalQueries: 0,
-            avgQueryTime: 0,
-            totalResults: 0,
-            fastestQuery: Infinity,
-            slowestQuery: 0
-        };
+  <script>
+    const { createApp, ref, computed, nextTick, onMounted } = Vue;
+    
+    // 配置常量
+    const CONFIG = {
+      categories: ['电子产品', '服装', '食品', '图书', '家居', '运动', '美妆', '汽车用品', '母婴', '数码配件'],
+      brands: ['Apple', 'Samsung', '华为', '小米', 'OPPO', 'vivo', 'Nike', 'Adidas', '联想', 'Dell', 'HP', 'ASUS', '索尼', 'LG', 'TCL', '海尔', '美的', '格力', '松下', '飞利浦'],
+      ratingOptions: [
+        { value: '', label: '不限' },
+        { value: '4.5', label: '4.5 星以上' },
+        { value: '4.0', label: '4.0 星以上' },
+        { value: '3.5', label: '3.5 星以上' },
+        { value: '3.0', label: '3.0 星以上' }
+      ],
+      sortOptions: [
+        { value: '', label: '默认排序' },
+        { value: 'price:asc', label: '价格：低到高' },
+        { value: 'price:desc', label: '价格：高到低' },
+        { value: 'rating:desc', label: '评分：高到低' },
+        { value: 'name:asc', label: '名称：A-Z' },
+        { value: 'createdAt:desc', label: '时间：最新' }
+      ],
+      pageSizeOptions: [
+        { value: 10, label: '每页 10 条' },
+        { value: 20, label: '每页 20 条' },
+        { value: 50, label: '每页 50 条' },
+        { value: 100, label: '每页 100 条' }
+      ],
+      tags: ['热销', '新品', '推荐', '限量', '优质', '经典']
+    };
+    
+    createApp({
+      setup() {
+        // 响应式数据
+        const isLoading = ref(true);
+        const loadingMessage = ref('正在初始化数据存储...');
+        const store = ref(null);
         
-        // 初始化 store
-        async function initStore() {
-            try {
-                store = await createStore({
-                    products: generateSampleData()
-                });
-                
-                console.log('查询功能演示初始化成功');
-                executeQuery(); // 初始查询
-                updateQueryStats();
-            } catch (error) {
-                console.error('查询功能演示初始化失败:', error);
-            }
-        }
+        // 过滤器
+        const filters = ref({
+          category: '',
+          brand: '',
+          minPrice: '',
+          maxPrice: '',
+          rating: ''
+        });
+        
+        // 查询设置
+        const sortBy = ref('');
+        const pageSize = ref(20);
+        const currentPage = ref(1);
+        const searchQuery = ref('');
+        
+        // 结果数据
+        const products = ref([]);
+        const totalResults = ref(0);
+        const totalPages = ref(1);
+        const queryTime = ref(0);
+        
+        // 统计数据
+        const queryHistory = ref([]);
+        const queryStats = ref({
+          totalQueries: 0,
+          avgQueryTime: 0,
+          totalResults: 0,
+          fastestQuery: Infinity,
+          slowestQuery: 0
+        });
+        
+        // 检查 UnoCSS 是否准备好
+        const checkUnoReady = () => {
+          return new Promise((resolve) => {
+            let checkCount = 0;
+            const maxChecks = 50;
+
+            const checkInterval = setInterval(() => {
+              checkCount++;
+
+              const hasRuntime = window.__unocss_runtime;
+              const hasStyles = document.querySelector('style[data-unocss]') ||
+                document.querySelector('link[href*="unocss"]') ||
+                document.querySelector('style').textContent.includes('bg-gray-50');
+
+              if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                document.getElementById('app').className = 'uno-ready';
+                resolve();
+              }
+            }, 100);
+          });
+        };
 
         // 生成示例数据
-        function generateSampleData() {
-            const categories = ['电子产品', '服装', '食品', '图书', '家居'];
-            const brands = ['Apple', 'Samsung', '华为', '小米', 'Nike', 'Adidas', '联想', 'Dell'];
-            const adjectives = ['高端', '经典', '时尚', '实用', '创新', '专业', '舒适', '耐用'];
-            const products = [];
+        const generateSampleData = () => {
+          // 使用 Mock.js 生成大量测试数据
+          const mockData = Mock.mock({
+            'products|500-1000': [{
+              'id|+1': 1,
+              'name': '@ctitle(3, 8)',
+              'brand': `@pick(${JSON.stringify(CONFIG.brands)})`,
+              'category': `@pick(${JSON.stringify(CONFIG.categories)})`,
+              'price|100-9999': 100,
+              'rating': '@float(1.0, 5.0, 1, 1)',
+              'stock|0-999': 100,
+              'description': '@csentence(20, 80)',
+              'createdAt': '@date("yyyy-MM-dd")',
+              'sales|0-10000': 100,
+              'discount': '@float(0.5, 1.0, 1, 2)'
+            }]
+          });
+          
+          // 处理数据格式
+          return mockData.products.map(product => ({
+            ...product,
+            tags: [product.category, product.brand, Mock.Random.pick(CONFIG.tags)]
+          }));
+        };
+
+        // 初始化 store
+        const initStore = async () => {
+          try {
+            loadingMessage.value = '正在加载样式资源...';
+            await checkUnoReady();
+
+            loadingMessage.value = '正在初始化数据存储...';
             
-            for (let i = 1; i <= 200; i++) {
-                const category = categories[Math.floor(Math.random() * categories.length)];
-                const brand = brands[Math.floor(Math.random() * brands.length)];
-                const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-                
-                products.push({
-                    id: i,
-                    name: `${adjective}${category} ${i}`,
-                    brand: brand,
-                    category: category,
-                    price: Math.floor(Math.random() * 9900) + 100,
-                    rating: (Math.random() * 2 + 3).toFixed(1), // 3.0 - 5.0
-                    stock: Math.floor(Math.random() * 1000),
-                    description: `这是一个${adjective}的${category}，由${brand}品牌制造，具有优秀的品质和性能。`,
-                    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-                    tags: [category, brand, adjective]
-                });
-            }
+            store.value = await JsLiteRest.create({
+              products: generateSampleData()
+            });
             
-            return products;
-        }
+            console.log('查询功能演示初始化成功');
+            isLoading.value = false;
+            
+            // 执行初始查询
+            await executeQuery();
+          } catch (error) {
+            console.error('查询功能演示初始化失败:', error);
+            isLoading.value = false;
+          }
+        };
 
         // 构建查询参数
-        function buildQuery() {
-            const query = {};
-            
-            // 基础过滤
-            const category = document.getElementById('categoryFilter').value;
-            if (category) query.category = category;
-            
-            const brand = document.getElementById('brandFilter').value;
-            if (brand) query.brand = brand;
-            
-            // 价格范围
-            const minPrice = document.getElementById('minPrice').value;
-            if (minPrice) query.price_gte = parseInt(minPrice);
-            
-            const maxPrice = document.getElementById('maxPrice').value;
-            if (maxPrice) query.price_lte = parseInt(maxPrice);
-            
-            // 评分过滤
-            const rating = document.getElementById('ratingFilter').value;
-            if (rating) query.rating_gte = parseFloat(rating);
-            
-            // 排序
-            const sortBy = document.getElementById('sortBy').value;
-            if (sortBy) {
-                const [field, order] = sortBy.split(':');
-                query._sort = field;
-                query._order = order;
-            }
-            
-            // 分页
-            const pageSize = parseInt(document.getElementById('pageSize').value);
-            query._limit = pageSize;
-            query._page = currentPage;
-            
-            // 全文搜索
-            const searchQuery = document.getElementById('searchQuery').value.trim();
-            if (searchQuery) query._q = searchQuery;
-            
-            return query;
-        }
+        const buildQuery = () => {
+          const query = {};
+          
+          // 基础过滤
+          if (filters.value.category) query.category = filters.value.category;
+          if (filters.value.brand) query.brand = filters.value.brand;
+          
+          // 价格范围
+          if (filters.value.minPrice) query.price_gte = parseInt(filters.value.minPrice);
+          if (filters.value.maxPrice) query.price_lte = parseInt(filters.value.maxPrice);
+          
+          // 评分过滤
+          if (filters.value.rating) query.rating_gte = parseFloat(filters.value.rating);
+          
+          // 排序
+          if (sortBy.value) {
+            const [field, order] = sortBy.value.split(':');
+            query._sort = field;
+            query._order = order;
+          }
+          
+          // 分页
+          query._limit = parseInt(pageSize.value);
+          query._page = currentPage.value;
+          
+          // 全文搜索
+          if (searchQuery.value.trim()) query._q = searchQuery.value.trim();
+          
+          return query;
+        };
 
         // 执行查询
-        async function executeQuery() {
-            const startTime = Date.now();
+        const executeQuery = async () => {
+          if (!store.value) return;
+          
+          const startTime = Date.now();
+          
+          try {
+            const query = buildQuery();
+            const results = await store.value.get('products', query);
+            const currentQueryTime = Date.now() - startTime;
             
-            try {
-                const query = buildQuery();
-                const results = await store.get('products', query);
-                const queryTime = Date.now() - startTime;
-                
-                displayResults(results);
-                updatePageInfo(results);
-                addToQueryHistory(query, results.length, queryTime);
-                updateQueryStats(queryTime, results.length);
-                
-                document.getElementById('queryTime').textContent = `查询耗时: ${queryTime}ms`;
-                
-            } catch (error) {
-                console.error('查询失败:', error);
-                document.getElementById('productGrid').innerHTML = 
-                    '<div class="col-span-full text-red-500 text-center py-8">查询失败: ' + error.message + '</div>';
+            // 处理分页数据结构：当有分页参数时，返回 {count, list}，否则返回数组
+            let productList, totalCount;
+            if (query._page || query._limit) {
+              // 分页模式：返回 {count, list}
+              productList = results.list || [];
+              totalCount = results.count || 0;
+            } else {
+              // 非分页模式：直接返回数组
+              productList = Array.isArray(results) ? results : [];
+              totalCount = productList.length;
             }
-        }
-
-        // 显示查询结果
-        function displayResults(results) {
-            const productGrid = document.getElementById('productGrid');
-            const resultCount = document.getElementById('resultCount');
-
-            resultCount.textContent = `共 ${results.length} 个结果`;
-
-            if (results.length === 0) {
-                productGrid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-8">没有找到匹配的产品</div>';
-                return;
-            }
-
-            productGrid.innerHTML = results.map(product => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-semibold text-gray-800 text-sm">${product.name}</h3>
-                        <span class="text-lg font-bold text-green-600">¥${product.price}</span>
-                    </div>
-                    <div class="space-y-1 text-xs text-gray-600">
-                        <p>品牌: ${product.brand}</p>
-                        <p>分类: ${product.category}</p>
-                        <p>评分: ${product.rating} ⭐</p>
-                        <p>库存: ${product.stock}</p>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2 line-clamp-2">${product.description}</p>
-                    <div class="flex flex-wrap gap-1 mt-2">
-                        ${product.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">${tag}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-        }
+            
+            products.value = productList;
+            totalResults.value = totalCount;
+            queryTime.value = currentQueryTime;
+            
+            // 更新分页信息
+            updatePageInfo(totalCount);
+            
+            // 添加到查询历史
+            addToQueryHistory(query, productList.length, currentQueryTime);
+            
+            // 更新统计
+            updateQueryStats(currentQueryTime, productList.length);
+            
+          } catch (error) {
+            console.error('查询失败:', error);
+          }
+        };
 
         // 更新分页信息
-        function updatePageInfo(results) {
-            const pageSize = parseInt(document.getElementById('pageSize').value);
-            // 这里简化处理，实际应该从服务器获取总数
-            totalPages = Math.ceil(200 / pageSize); // 假设总共200条数据
-
-            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
-        }
+        const updatePageInfo = (totalCount) => {
+          totalPages.value = Math.max(1, Math.ceil(totalCount / parseInt(pageSize.value)));
+        };
 
         // 翻页
-        function changePage(direction) {
-            const newPage = currentPage + direction;
-            if (newPage >= 1 && newPage <= totalPages) {
-                currentPage = newPage;
-                executeQuery();
-            }
-        }
+        const changePage = (direction) => {
+          const newPage = currentPage.value + direction;
+          if (newPage >= 1 && newPage <= totalPages.value) {
+            currentPage.value = newPage;
+            executeQuery();
+          }
+        };
+
+        // 改变页面大小
+        const changePageSize = () => {
+          currentPage.value = 1;
+          executeQuery();
+        };
 
         // 重置筛选
-        function resetFilters() {
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('brandFilter').value = '';
-            document.getElementById('minPrice').value = '';
-            document.getElementById('maxPrice').value = '';
-            document.getElementById('ratingFilter').value = '';
-            document.getElementById('sortBy').value = '';
-            document.getElementById('searchQuery').value = '';
-            currentPage = 1;
-            executeQuery();
-        }
+        const resetFilters = () => {
+          filters.value = {
+            category: '',
+            brand: '',
+            minPrice: '',
+            maxPrice: '',
+            rating: ''
+          };
+          sortBy.value = '';
+          searchQuery.value = '';
+          currentPage.value = 1;
+          executeQuery();
+        };
 
         // 添加到查询历史
-        function addToQueryHistory(query, resultCount, queryTime) {
-            const historyItem = {
-                query: JSON.stringify(query),
-                resultCount,
-                queryTime,
-                timestamp: new Date().toLocaleTimeString()
-            };
-
-            queryHistory.unshift(historyItem);
-            if (queryHistory.length > 10) {
-                queryHistory = queryHistory.slice(0, 10);
-            }
-
-            displayQueryHistory();
-        }
-
-        // 显示查询历史
-        function displayQueryHistory() {
-            const historyContainer = document.getElementById('queryHistory');
-
-            if (queryHistory.length === 0) {
-                historyContainer.innerHTML = '<div class="text-gray-500 text-center py-4">暂无查询历史</div>';
-                return;
-            }
-
-            historyContainer.innerHTML = queryHistory.map((item, index) => `
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm">
-                    <div class="flex-1">
-                        <span class="font-mono text-xs text-gray-600">${item.query}</span>
-                    </div>
-                    <div class="flex space-x-4 text-xs text-gray-500">
-                        <span>${item.resultCount} 结果</span>
-                        <span>${item.queryTime}ms</span>
-                        <span>${item.timestamp}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // 清空查询历史
-        function clearQueryHistory() {
-            queryHistory = [];
-            displayQueryHistory();
-        }
+        const addToQueryHistory = (query, resultCount, time) => {
+          const timestamp = new Date().toLocaleTimeString();
+          const params = Object.keys(query).length === 0 ? '无筛选条件' : JSON.stringify(query);
+          
+          queryHistory.value.unshift({
+            params,
+            results: resultCount,
+            time,
+            timestamp
+          });
+          
+          // 保持历史记录在20条以内
+          if (queryHistory.value.length > 20) {
+            queryHistory.value = queryHistory.value.slice(0, 20);
+          }
+        };
 
         // 更新查询统计
-        function updateQueryStats(queryTime = null, resultCount = null) {
-            if (queryTime !== null) {
-                queryStats.totalQueries++;
-                queryStats.totalResults += resultCount;
-                queryStats.avgQueryTime = Math.round(
-                    (queryStats.avgQueryTime * (queryStats.totalQueries - 1) + queryTime) / queryStats.totalQueries
-                );
-                queryStats.fastestQuery = Math.min(queryStats.fastestQuery, queryTime);
-                queryStats.slowestQuery = Math.max(queryStats.slowestQuery, queryTime);
-            }
+        const updateQueryStats = (time, resultCount) => {
+          queryStats.value.totalQueries++;
+          queryStats.value.totalResults += resultCount;
+          queryStats.value.fastestQuery = Math.min(queryStats.value.fastestQuery, time);
+          queryStats.value.slowestQuery = Math.max(queryStats.value.slowestQuery, time);
+          
+          // 计算平均查询时间
+          const totalTime = queryStats.value.avgQueryTime * (queryStats.value.totalQueries - 1) + time;
+          queryStats.value.avgQueryTime = Math.round(totalTime / queryStats.value.totalQueries);
+        };
 
-            const statsContainer = document.getElementById('queryStats');
-            const stats = [
-                { label: '总查询数', value: queryStats.totalQueries, color: 'blue' },
-                { label: '平均耗时', value: `${queryStats.avgQueryTime}ms`, color: 'green' },
-                { label: '最快查询', value: queryStats.fastestQuery === Infinity ? '0ms' : `${queryStats.fastestQuery}ms`, color: 'purple' },
-                { label: '最慢查询', value: `${queryStats.slowestQuery}ms`, color: 'orange' }
-            ];
+        // 清空查询历史
+        const clearQueryHistory = () => {
+          queryHistory.value = [];
+        };
 
-            statsContainer.innerHTML = stats.map(stat => `
-                <div class="bg-${stat.color}-50 border border-${stat.color}-200 rounded-lg p-4 text-center">
-                    <div class="text-xl font-bold text-${stat.color}-600">${stat.value}</div>
-                    <div class="text-sm text-${stat.color}-800">${stat.label}</div>
-                </div>
-            `).join('');
-        }
-
-        // 监听输入变化，实时查询
-        document.addEventListener('DOMContentLoaded', function() {
-            const inputs = ['categoryFilter', 'brandFilter', 'minPrice', 'maxPrice', 'ratingFilter', 'sortBy', 'pageSize'];
-            inputs.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('change', () => {
-                        currentPage = 1; // 重置到第一页
-                        executeQuery();
-                    });
-                }
-            });
-
-            // 搜索框延迟查询
-            let searchTimeout;
-            const searchInput = document.getElementById('searchQuery');
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => {
-                        currentPage = 1;
-                        executeQuery();
-                    }, 500);
-                });
-            }
+        // 生命周期
+        onMounted(() => {
+          initStore();
         });
 
-        // 页面加载时初始化
-        window.addEventListener('load', initStore);
-    </script>
+        return {
+          // 配置数据
+          CONFIG,
+          // 响应式数据
+          isLoading,
+          loadingMessage,
+          filters,
+          sortBy,
+          pageSize,
+          currentPage,
+          searchQuery,
+          products,
+          totalResults,
+          totalPages,
+          queryTime,
+          queryHistory,
+          queryStats,
+          // 方法
+          executeQuery,
+          changePage,
+          changePageSize,
+          resetFilters,
+          clearQueryHistory
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
 </html>

@@ -241,14 +241,4 @@ await store.get('users', { status: 'active', age_gte: 18 });
 - [查询过滤](/api/query) - 学习高级查询功能
 - [关系操作](/api/relations) - 处理关联数据
 - [中间件](/api/middleware) - 扩展功能和自定义逻辑
-- [配置选项](/api/options) - 详细的配置参数说明
 
-## 在线体验
-
-想要立即体验 js-lite-rest？访问我们的[在线示例](/demo/)，或者在当前页面的浏览器控制台中直接使用：
-
-```javascript
-// js-lite-rest 已全局加载，可直接使用
-const store = await createStore({ users: [] });
-console.log('Store 创建成功！', store);
-```

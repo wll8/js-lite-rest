@@ -10,8 +10,8 @@ hero:
       text: 快速开始
       link: /api/
     - theme: alt
-      text: 在线示例
-      link: /demo/
+      text: 在线演示
+      link: /public/html-demo/
     - theme: alt
       text: GitHub
       link: https://github.com/wll8/js-lite-rest
@@ -51,11 +51,14 @@ features:
 在浏览器控制台中直接体验 js-lite-rest：
 
 ```javascript
-// 全局已加载 js-lite-rest，可直接使用
-const store = await createStore({
+// 引入 js-lite-rest (如果通过 CDN 引入，则为全局变量 JsLiteRest)
+import JsLiteRest from 'js-lite-rest/browser';
+
+// 创建 store 实例，注意必须使用 Store.create() 方法
+const store = await JsLiteRest.create({
   users: [
-    { id: 1, name: 'Alice', email: 'alice@example.com' },
-    { id: 2, name: 'Bob', email: 'bob@example.com' }
+    { id: 'user1', name: 'Alice', email: 'alice@example.com' },
+    { id: 'user2', name: 'Bob', email: 'bob@example.com' }
   ]
 });
 
@@ -63,7 +66,7 @@ const store = await createStore({
 const users = await store.get('users');
 console.log('所有用户:', users);
 
-// 添加新用户
+// 添加新用户（ID 会自动生成）
 const newUser = await store.post('users', { name: 'Charlie', email: 'charlie@example.com' });
 console.log('新用户:', newUser);
 
@@ -77,18 +80,45 @@ console.log('名字包含A的用户:', filteredUsers);
 ### NPM 安装
 
 ```bash
+# 使用 npm
 npm install js-lite-rest
+
+# 使用 pnpm
+pnpm add js-lite-rest
+
+# 使用 yarn
+yarn add js-lite-rest
+```
+
+### 环境特定导入
+
+```javascript
+// Node.js 环境
+import JsLiteRest from 'js-lite-rest';
+// 或者显式指定 Node.js 版本
+import JsLiteRest from 'js-lite-rest/node';
+
+// 浏览器环境 (ES Module)
+import JsLiteRest from 'js-lite-rest/browser';
+
+// 浏览器环境 (CommonJS，如果支持)
+const JsLiteRest = require('js-lite-rest');
 ```
 
 ### CDN 引入
 
 ```html
-<!-- UMD 版本 -->
+<!-- UMD 版本，直接通过 script 标签引入 -->
 <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+<script>
+  // 使用全局变量 JsLiteRest
+  const store = await JsLiteRest.create();
+</script>
 
 <!-- ES Module 版本 -->
 <script type="module">
-  import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  const store = await JsLiteRest.create();
 </script>
 ```
 
@@ -97,14 +127,16 @@ npm install js-lite-rest
 ### 🎯 简单易用
 
 ```javascript
-// 创建 store
-const store = await createStore();
+// 创建 store - 注意必须使用异步的 create() 方法
+const store = await JsLiteRest.create();
 
 // CRUD 操作
-await store.post('users', { name: 'Alice' });    // 创建
-const users = await store.get('users');          // 读取
-await store.put('users/1', { name: 'Bob' });     // 更新
-await store.delete('users/1');                   // 删除
+await store.post('users', { name: 'Alice' });         // 创建，ID 自动生成
+const users = await store.get('users');               // 读取所有
+const user = await store.get('users/abc123');         // 读取单个
+await store.put('users/abc123', { name: 'Bob' });     // 完全更新
+await store.patch('users/abc123', { age: 25 });       // 部分更新
+await store.delete('users/abc123');                   // 删除
 ```
 
 ### 🔍 强大查询
@@ -114,10 +146,23 @@ await store.delete('users/1');                   // 删除
 await store.get('users', { age_gte: 18, city: '北京' });
 
 // 排序分页
-await store.get('users', { _sort: 'age', _order: 'desc', _page: 1, _limit: 10 });
+await store.get('users', { 
+  _sort: 'age', 
+  _order: 'desc', 
+  _page: 1, 
+  _limit: 10 
+});
 
 // 全文搜索
 await store.get('users', { _q: '张三' });
+
+// 复杂查询组合
+await store.get('users', {
+  age_gte: 18,
+  city_like: '北京',
+  _sort: 'createdAt',
+  _order: 'desc'
+});
 ```
 
 ### 🔗 关联操作
@@ -136,20 +181,94 @@ await store.get('comments', { _expand: 'post' });
 
 ```javascript
 // 添加日志中间件
-store.use(async (args, next) => {
-  console.log('请求:', args);
+store.use(async (args, next, opt) => {
+  const [method, path, data] = args;
+  console.log(`请求: ${method.toUpperCase()} ${path}`, data);
+  
   const result = await next();
+  
   console.log('响应:', result);
   return result;
 });
 
 // 添加验证中间件
-store.use(async (args, next) => {
+store.use(async (args, next, opt) => {
   const [method, path, data] = args;
-  if (method === 'post' && !data.name) {
-    throw new Error('name 是必填字段');
+  
+  if (method === 'post' && path === 'users') {
+    if (!data.name) {
+      throw { code: 400, success: false, message: 'name 是必填字段' };
+    }
+    if (!data.email) {
+      throw { code: 400, success: false, message: 'email 是必填字段' };
+    }
   }
+  
   return next();
+});
+
+// 添加时间戳中间件
+store.use(async (args, next, opt) => {
+  const [method, path, data] = args;
+  
+  if (method === 'post' && data) {
+    data.createdAt = new Date().toISOString();
+  }
+  if (method === 'put' && data) {
+    data.updatedAt = new Date().toISOString();
+  }
+  
+  return next();
+});
+```
+
+### 📦 批量操作
+
+```javascript
+// 批量创建
+const users = await store.post('users', [
+  { name: 'Alice', email: 'alice@example.com' },
+  { name: 'Bob', email: 'bob@example.com' },
+  { name: 'Charlie', email: 'charlie@example.com' }
+]);
+
+// 批量更新
+await store.put('users', [
+  { id: 'user1', name: 'Alice Updated' },
+  { id: 'user2', name: 'Bob Updated' }
+]);
+
+// 批量删除
+await store.delete('users', ['user1', 'user2']);
+
+// 部分成功处理
+try {
+  await store.post('users', [
+    { name: 'Valid User' },
+    { /* 缺少必填字段 */ }
+  ]);
+} catch (error) {
+  // error.data 包含成功的记录
+  // error.error 包含失败的记录和错误信息
+}
+```
+
+### 🗄️ 数据持久化
+
+```javascript
+// 浏览器环境 - 自动使用 IndexedDB/localStorage
+const browserStore = await JsLiteRest.create(initialData, {
+  name: 'my-app-data'  // 数据库名称
+});
+
+// Node.js 环境 - 自动使用文件系统
+const nodeStore = await JsLiteRest.create(initialData, {
+  name: 'my-app-data.json'  // 文件路径
+});
+
+// 内存模式 - 不持久化
+const memoryStore = await JsLiteRest.create(initialData, {
+  adapter: 'memory'
 });
 ```
 
@@ -160,14 +279,44 @@ store.use(async (args, next) => {
 - **测试环境**: 为前端测试提供模拟数据服务
 - **学习演示**: 教学和演示 RESTful API 概念
 - **离线应用**: 支持离线数据操作的 PWA 应用
+- **Mock 服务**: 前端开发时的数据模拟
+- **小型工具**: 不需要复杂后端的小型管理工具
+
+## 性能特点
+
+- **轻量级**: 零依赖，gzip 压缩后仅 ~8KB
+- **异步优先**: 所有操作均为异步，不阻塞主线程
+- **高效查询**: 内建索引和优化算法，支持复杂查询
+- **批量支持**: 原生支持批量操作，减少调用次数
+- **内存友好**: 智能数据管理，避免内存泄漏
+
+## 兼容性
+
+- **Node.js**: >= 14.0.0
+- **浏览器**: 
+  - Chrome >= 63
+  - Firefox >= 67
+  - Safari >= 13
+  - Edge >= 79
+- **环境**: 支持 ES2020+ 语法
 
 ## 生态系统
 
 | 项目 | 状态 | 描述 |
 |------|------|------|
 | [js-lite-rest](https://github.com/wll8/js-lite-rest) | ✅ 稳定 | 核心库 |
-| [js-lite-rest-cli](https://github.com/wll8/js-lite-rest-cli) | 🚧 开发中 | 命令行工具 |
-| [js-lite-rest-ui](https://github.com/wll8/js-lite-rest-ui) | 📋 计划中 | 可视化管理界面 |
+| - | 🚧 开发中 | 命令行工具 |
+| - | 📋 计划中 | 可视化管理界面 |
+
+## 在线演示
+
+您可以通过以下链接体验 js-lite-rest 的各种功能：
+
+- [基础 CRUD 操作](https://wll8.github.io/js-lite-rest/html-demo/basic-crud.html) - 展示增删改查基本功能
+- [博客系统示例](https://wll8.github.io/js-lite-rest/html-demo/blog-system.html) - 完整的博客管理系统
+- [查询功能演示](https://wll8.github.io/js-lite-rest/html-demo/query-features.html) - 各种查询和过滤功能
+- [中间件使用](https://wll8.github.io/js-lite-rest/html-demo/middleware.html) - 中间件的使用方法
+- [性能测试](https://wll8.github.io/js-lite-rest/html-demo/performance.html) - 性能基准测试
 
 ---
 
@@ -177,7 +326,7 @@ store.use(async (args, next) => {
   </p>
   <div class="flex justify-center space-x-4 mt-4">
     <a href="/api/" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">查看文档</a>
-    <a href="/demo/" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors">在线示例</a>
+    <a href="https://wll8.github.io/js-lite-rest/html-demo/" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors">在线示例</a>
     <a href="https://github.com/wll8/js-lite-rest" class="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors">GitHub</a>
   </div>
 </div>

@@ -20,8 +20,8 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: 'API 文档', link: '/api/' },
-      { text: '示例', link: '/demo/' },
-      { text: '测试', link: '/test/' },
+      { text: '示例', link: '/https://wll8.github.io/js-lite-rest/demo/' },
+      { text: '测试', link: 'https://wll8.github.io/js-lite-rest/test-results/mochawesome-results.html' },
       {
         text: '更多',
         items: [
@@ -42,34 +42,9 @@ export default defineConfig({
             { text: '查询过滤', link: '/api/query' },
             { text: '关系操作', link: '/api/relations' },
             { text: '中间件', link: '/api/middleware' },
-            { text: '配置选项', link: '/api/options' }
           ]
         }
       ],
-      '/demo/': [
-        {
-          text: '示例',
-          items: [
-            { text: '示例首页', link: '/demo/' },
-            { text: '基础 CRUD', link: '/html-demo/basic-crud.html' },
-            { text: '博客系统', link: '/html-demo/blog-system.html' },
-            { text: '中间件示例', link: '/html-demo/middleware.html' },
-            { text: '性能测试', link: '/html-demo/performance.html' },
-            { text: '查询功能', link: '/html-demo/query-features.html' },
-            { text: '关系操作', link: '/html-demo/relations.html' }
-          ]
-        }
-      ],
-      '/test/': [
-        {
-          text: '测试',
-          items: [
-            { text: '测试概览', link: '/test/' },
-            { text: '测试报告', link: '/test/report' },
-            { text: '在线报告', link: '/test-results/mochawesome-results.html' }
-          ]
-        }
-      ]
     },
 
     socialLinks: [

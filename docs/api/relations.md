@@ -43,19 +43,19 @@ const post = await store.post('users/2/posts', {
 // 数据结构示例
 const data = {
   posts: [
-    { id: 1, title: '第一篇文章', userId: 1 },
-    { id: 2, title: '第二篇文章', userId: 2 }
+    { id: 1, title: '第一篇文章', usersId: 1 },
+    { id: 2, title: '第二篇文章', usersId: 2 }
   ],
   comments: [
-    { id: 1, content: '很好！', postId: 1 },
-    { id: 2, content: '赞同', postId: 1 },
-    { id: 3, content: '不错', postId: 2 }
+    { id: 1, content: '很好！', postsId: 1 },
+    { id: 2, content: '赞同', postsId: 1 },
+    { id: 3, content: '不错', postsId: 2 }
   ]
 };
 
-// posts/1/comments 会返回所有 postId === 1 的评论
+// posts/1/comments 会返回所有 postsId === 1 的评论
 const comments = await store.get('posts/1/comments');
-// 结果: [{ id: 1, content: '很好！', postId: 1 }, { id: 2, content: '赞同', postId: 1 }]
+// 结果: [{ id: 1, content: '很好！', postsId: 1 }, { id: 2, content: '赞同', postsId: 1 }]
 ```
 
 ## 关联嵌入 (_embed)
@@ -73,18 +73,18 @@ const posts = await store.get('posts', { _embed: 'comments' });
   {
     id: 1,
     title: '第一篇文章',
-    userId: 1,
+    usersId: 1,
     comments: [
-      { id: 1, content: '很好！', postId: 1 },
-      { id: 2, content: '赞同', postId: 1 }
+      { id: 1, content: '很好！', postsId: 1 },
+      { id: 2, content: '赞同', postsId: 1 }
     ]
   },
   {
     id: 2,
     title: '第二篇文章',
-    userId: 2,
+    usersId: 2,
     comments: [
-      { id: 3, content: '不错', postId: 2 }
+      { id: 3, content: '不错', postsId: 2 }
     ]
   }
 ]
@@ -100,10 +100,10 @@ const post = await store.get('posts/1', { _embed: 'comments' });
 {
   id: 1,
   title: '第一篇文章',
-  userId: 1,
+  usersId: 1,
   comments: [
-    { id: 1, content: '很好！', postId: 1 },
-    { id: 2, content: '赞同', postId: 1 }
+    { id: 1, content: '很好！', postsId: 1 },
+    { id: 2, content: '赞同', postsId: 1 }
   ]
 }
 ```
@@ -142,21 +142,21 @@ const comments = await store.get('comments', { _expand: 'post' });
   {
     id: 1,
     content: '很好！',
-    postId: 1,
+    postsId: 1,
     post: {
       id: 1,
       title: '第一篇文章',
-      userId: 1
+      usersId: 1
     }
   },
   {
     id: 2,
     content: '赞同',
-    postId: 1,
+    postsId: 1,
     post: {
       id: 1,
       title: '第一篇文章',
-      userId: 1
+      usersId: 1
     }
   }
 ]
@@ -172,11 +172,11 @@ const comment = await store.get('comments/1', { _expand: 'post' });
 {
   id: 1,
   content: '很好！',
-  postId: 1,
+  postsId: 1,
   post: {
     id: 1,
     title: '第一篇文章',
-    userId: 1
+    usersId: 1
   }
 }
 ```
@@ -194,8 +194,8 @@ const comments = await store.get('comments', {
   {
     id: 1,
     content: '很好！',
-    postId: 1,
-    userId: 2,
+    postsId: 1,
+    usersId: 2,
     post: { id: 1, title: '第一篇文章' },
     user: { id: 2, name: 'Bob' }
   }
@@ -214,8 +214,8 @@ const store = await createStore(data, {
 });
 
 // 关联规则：
-// posts 表中的 userId 字段关联到 users 表
-// comments 表中的 postId 字段关联到 posts 表
+// posts 表中的 usersId 字段关联到 users 表
+// comments 表中的 postsId 字段关联到 posts 表
 // products 表中的 categoryId 字段关联到 categories 表
 ```
 
@@ -247,12 +247,12 @@ const blogData = {
     { id: 2, name: '生活' }
   ],
   posts: [
-    { id: 1, title: 'JavaScript 入门', userId: 1, categoryId: 1 },
-    { id: 2, title: '我的日常', userId: 2, categoryId: 2 }
+    { id: 1, title: 'JavaScript 入门', usersId: 1, categoryId: 1 },
+    { id: 2, title: '我的日常', usersId: 2, categoryId: 2 }
   ],
   comments: [
-    { id: 1, content: '很有用！', postId: 1, userId: 2 },
-    { id: 2, content: '感谢分享', postId: 1, userId: 1 }
+    { id: 1, content: '很有用！', postsId: 1, usersId: 2 },
+    { id: 2, content: '感谢分享', postsId: 1, usersId: 1 }
   ]
 };
 
@@ -281,7 +281,7 @@ const ecommerceData = {
     { id: 2, name: 'T恤', categoryId: 2, price: 29 }
   ],
   orders: [
-    { id: 1, userId: 1, total: 1028, status: 'completed' }
+    { id: 1, usersId: 1, total: 1028, status: 'completed' }
   ],
   orderItems: [
     { id: 1, orderId: 1, productId: 1, quantity: 1, price: 999 },
@@ -380,8 +380,8 @@ const posts = await store.get('posts', {
 // ✅ 清晰的外键命名
 const data = {
   users: [{ id: 1, name: 'Alice' }],
-  posts: [{ id: 1, title: '文章', userId: 1 }], // 明确的 userId
-  comments: [{ id: 1, content: '评论', postId: 1, userId: 1 }]
+  posts: [{ id: 1, title: '文章', usersId: 1 }], // 明确的 usersId
+  comments: [{ id: 1, content: '评论', postsId: 1, usersId: 1 }]
 };
 ```
 
@@ -394,7 +394,7 @@ const data = {
     { id: 1, name: 'Alice', email: 'alice@example.com' }
   ],
   posts: [
-    { id: 1, title: '文章', userId: 1, categoryId: 1 }
+    { id: 1, title: '文章', usersId: 1, categoryId: 1 }
   ],
   categories: [
     { id: 1, name: '技术' }
@@ -434,4 +434,3 @@ const posts = await store.get('posts', {
 
 - [CRUD 操作](/api/crud) - 基本的数据操作
 - [查询过滤](/api/query) - 高级查询功能
-- [在线示例](/html-demo/relations.html) - 关系操作演示

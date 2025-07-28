@@ -621,6 +621,21 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(result[0].content).to.equal('c1');
       expect(result[1].content).to.equal('c2');
     });
+    it('get posts/1/comments 不应使用单复数转换的 id key', async () => {
+      const store = await JsLiteRest.create({
+        posts: [
+          { id: 1, title: 'post1' },
+          { id: 2, title: 'post2' },
+        ],
+        comments: [
+          { id: 1, postId: 1, content: 'c1' },
+          { id: 2, postId: 1, content: 'c2' },
+          { id: 3, postId: 2, content: 'c3' },
+        ],
+      });
+      const result = await store.get('posts/1/comments');
+      expect(result.length).to.equal(0);
+    });
     it('post posts/1/comments 嵌套资源', async () => {
       const store = await JsLiteRest.create({
         posts: [

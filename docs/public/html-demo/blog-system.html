@@ -1,657 +1,700 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>博客系统 - js-lite-rest</title>
-    <!-- UnoCSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
-    <!-- js-lite-rest UMD -->
-    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博客系统 - js-lite-rest</title>
+  <!-- Vue 3 UMD -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- js-lite-rest UMD -->
+  <script src="../../../dist/js-lite-rest.browser.umd.js"></script>
+  <style>
+    /* 初始白屏样式，防止未样式化的内容闪烁 */
+    body {
+      background: #f9fafb;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 在UnoCSS加载前完全隐藏所有内容，只显示白屏 */
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* UnoCSS加载完成后显示内容 */
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <nav class="mb-4">
-                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
-            </nav>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">博客系统</h1>
-            <p class="text-gray-600">完整的博客功能演示，包含文章管理和评论系统</p>
-        </header>
-
-        <!-- 导航标签 -->
-        <div class="mb-6">
-            <div class="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
-                <button onclick="showTab('posts')" id="postsTab" 
-                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white">
-                    文章管理
-                </button>
-                <button onclick="showTab('comments')" id="commentsTab" 
-                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800">
-                    评论管理
-                </button>
-                <button onclick="showTab('view')" id="viewTab" 
-                        class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800">
-                    博客预览
-                </button>
-            </div>
-        </div>
-
-        <!-- 文章管理面板 -->
-        <div id="postsPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- 文章操作 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">文章操作</h2>
-                
-                <div class="space-y-4">
-                    <input type="text" id="postTitle" placeholder="文章标题" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="postAuthor" placeholder="作者" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <textarea id="postContent" placeholder="文章内容" rows="6"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    <input type="text" id="postTags" placeholder="标签 (用逗号分隔)" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    
-                    <div class="flex space-x-2">
-                        <button onclick="addPost()" 
-                                class="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
-                            发布文章
-                        </button>
-                        <button onclick="updatePost()" id="updatePostBtn" style="display: none;"
-                                class="flex-1 bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
-                            更新文章
-                        </button>
-                        <button onclick="cancelEdit()" id="cancelEditBtn" style="display: none;"
-                                class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
-                            取消
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 文章列表 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">文章列表</h2>
-                    <span id="postCount" class="text-sm text-gray-500">共 0 篇文章</span>
-                </div>
-                <div id="postList" class="space-y-3 max-h-96 overflow-y-auto">
-                    <!-- 文章列表将在这里显示 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 评论管理面板 -->
-        <div id="commentsPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- 评论操作 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">评论操作</h2>
-                
-                <div class="space-y-4">
-                    <select id="commentPostId" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">选择文章</option>
-                    </select>
-                    <input type="text" id="commentAuthor" placeholder="评论者" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <textarea id="commentContent" placeholder="评论内容" rows="4"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    
-                    <div class="flex space-x-2">
-                        <button onclick="addComment()" 
-                                class="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
-                            发表评论
-                        </button>
-                        <button onclick="updateComment()" id="updateCommentBtn" style="display: none;"
-                                class="flex-1 bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
-                            更新评论
-                        </button>
-                        <button onclick="cancelCommentEdit()" id="cancelCommentEditBtn" style="display: none;"
-                                class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
-                            取消
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 评论列表 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">评论列表</h2>
-                    <span id="commentCount" class="text-sm text-gray-500">共 0 条评论</span>
-                </div>
-                <div id="commentList" class="space-y-3 max-h-96 overflow-y-auto">
-                    <!-- 评论列表将在这里显示 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 博客预览面板 -->
-        <div id="viewPanel" class="hidden">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-6">博客预览</h2>
-                <div id="blogView" class="space-y-8">
-                    <!-- 博客预览将在这里显示 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 操作日志 -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">操作日志</h2>
-                <button onclick="clearLog()" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
-            </div>
-            <div id="operationLog" class="bg-gray-50 p-4 rounded-md h-32 overflow-y-auto font-mono text-sm">
-                <!-- 操作日志将在这里显示 -->
-            </div>
-        </div>
+  <div id="app">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">正在初始化...</h2>
+        <p class="text-gray-500">{{ loadingMessage }}</p>
+      </div>
     </div>
 
-    <script>
-        let store;
-        let currentEditingPostId = null;
-        let currentEditingCommentId = null;
-        
-        // 初始化 store
-        async function initStore() {
-            try {
-                store = await createStore({
-                    posts: [
-                        {
-                            id: 1,
-                            title: 'js-lite-rest 入门指南',
-                            author: 'Alice',
-                            content: '这是一个轻量级的前端数据存储库，支持 RESTful 风格的 CRUD 操作。它可以在浏览器中使用 localStorage，在 Node.js 中使用文件系统进行数据持久化。',
-                            tags: ['JavaScript', '前端', '数据存储'],
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString()
-                        },
-                        {
-                            id: 2,
-                            title: '中间件系统详解',
-                            author: 'Bob',
-                            content: 'js-lite-rest 提供了强大的中间件系统，允许你在请求前后执行自定义逻辑。你可以用它来实现日志记录、数据验证、权限控制等功能。',
-                            tags: ['中间件', '架构设计'],
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString()
-                        }
-                    ],
-                    comments: [
-                        {
-                            id: 1,
-                            postId: 1,
-                            author: 'Charlie',
-                            content: '这个库看起来很有用！我正在寻找一个轻量级的前端数据存储解决方案。',
-                            createdAt: new Date().toISOString()
-                        },
-                        {
-                            id: 2,
-                            postId: 1,
-                            author: 'David',
-                            content: '文档写得很清楚，API 设计也很直观。赞！',
-                            createdAt: new Date().toISOString()
-                        },
-                        {
-                            id: 3,
-                            postId: 2,
-                            author: 'Eve',
-                            content: '中间件系统的设计很棒，给了开发者很大的灵活性。',
-                            createdAt: new Date().toISOString()
-                        }
-                    ]
-                });
-                
-                log('博客系统初始化成功');
-                loadPosts();
-                loadComments();
-                updatePostSelect();
-                showBlogView();
-            } catch (error) {
-                log('博客系统初始化失败: ' + error.message, 'error');
-            }
-        }
+    <!-- 主要内容 -->
+    <div v-else class="container mx-auto px-4 py-8">
+      <header class="mb-8">
+        <nav class="mb-4">
+          <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">博客系统</h1>
+        <p class="text-gray-600">完整的博客功能演示，包含文章管理和评论系统</p>
+      </header>
 
-        // 日志记录
-        function log(message, type = 'info') {
-            const logElement = document.getElementById('operationLog');
-            const timestamp = new Date().toLocaleTimeString();
-            const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600';
-            logElement.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
-            logElement.scrollTop = logElement.scrollHeight;
-        }
+      <!-- 导航标签 -->
+      <div class="mb-6">
+        <div class="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
+          <button @click="activeTab = 'posts'" 
+                  :class="['flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors', 
+                          activeTab === 'posts' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-gray-800']">
+            文章管理
+          </button>
+          <button @click="activeTab = 'comments'" 
+                  :class="['flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors', 
+                          activeTab === 'comments' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-gray-800']">
+            评论管理
+          </button>
+          <button @click="showBlogView(); activeTab = 'view'" 
+                  :class="['flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors', 
+                          activeTab === 'view' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-gray-800']">
+            博客预览
+          </button>
+        </div>
+      </div>
 
-        // 清空日志
-        function clearLog() {
-            document.getElementById('operationLog').innerHTML = '';
-        }
+      <!-- 文章管理面板 -->
+      <div v-show="activeTab === 'posts'" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 文章操作 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">文章操作</h2>
+          
+          <div class="space-y-4">
+            <input v-model="postForm.title" type="text" placeholder="文章标题" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input v-model="postForm.author" type="text" placeholder="作者" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <textarea v-model="postForm.content" placeholder="文章内容" rows="6"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            <input v-model="postForm.tags" type="text" placeholder="标签 (用逗号分隔)" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div class="flex space-x-2">
+              <button v-if="!currentEditingPostId" @click="addPost" :disabled="!isPostFormValid"
+                      :class="['flex-1 py-2 rounded-md transition-colors', 
+                              isPostFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                发布文章
+              </button>
+              <button v-if="currentEditingPostId" @click="updatePost" :disabled="!isPostFormValid"
+                      class="flex-1 bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
+                更新文章
+              </button>
+              <button v-if="currentEditingPostId" @click="cancelEdit"
+                      class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
 
-        // 标签切换
-        function showTab(tab) {
-            // 隐藏所有面板
-            document.getElementById('postsPanel').classList.add('hidden');
-            document.getElementById('commentsPanel').classList.add('hidden');
-            document.getElementById('viewPanel').classList.add('hidden');
-            
-            // 重置所有标签样式
-            document.getElementById('postsTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
-            document.getElementById('commentsTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
-            document.getElementById('viewTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
-            
-            // 显示选中的面板和设置活动标签
-            if (tab === 'posts') {
-                document.getElementById('postsPanel').classList.remove('hidden');
-                document.getElementById('postsTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
-            } else if (tab === 'comments') {
-                document.getElementById('commentsPanel').classList.remove('hidden');
-                document.getElementById('commentsTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
-            } else if (tab === 'view') {
-                document.getElementById('viewPanel').classList.remove('hidden');
-                document.getElementById('viewTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white';
-                showBlogView();
-            }
-        }
-
-        // 加载文章列表
-        async function loadPosts() {
-            try {
-                const posts = await store.get('posts', { _sort: 'createdAt', _order: 'desc' });
-                displayPosts(posts);
-                log(`加载文章成功，共 ${posts.length} 篇文章`, 'success');
-            } catch (error) {
-                log('加载文章失败: ' + error.message, 'error');
-            }
-        }
-
-        // 显示文章列表
-        function displayPosts(posts) {
-            const postList = document.getElementById('postList');
-            const postCount = document.getElementById('postCount');
-            
-            postCount.textContent = `共 ${posts.length} 篇文章`;
-            
-            if (posts.length === 0) {
-                postList.innerHTML = '<div class="text-gray-500 text-center py-4">暂无文章</div>';
-                return;
-            }
-            
-            postList.innerHTML = posts.map(post => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-semibold text-gray-800">${post.title}</h3>
-                        <div class="flex space-x-2">
-                            <button onclick="editPost(${post.id})" 
-                                    class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
-                            <button onclick="deletePost(${post.id})" 
-                                    class="text-red-600 hover:text-red-800 text-sm">删除</button>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-2">作者: ${post.author}</p>
-                    <p class="text-gray-700 text-sm mb-2">${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}</p>
-                    <div class="flex flex-wrap gap-1 mb-2">
-                        ${post.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">${tag}</span>`).join('')}
-                    </div>
-                    <p class="text-xs text-gray-500">${new Date(post.createdAt).toLocaleString()}</p>
+        <!-- 文章列表 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">文章列表</h2>
+            <span class="text-sm text-gray-500">共 {{ posts.length }} 篇文章</span>
+          </div>
+          <div class="space-y-3 max-h-96 overflow-y-auto">
+            <div v-if="posts.length === 0" class="text-gray-500 text-center py-4">暂无文章</div>
+            <div v-for="post in posts" :key="post.id" class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+              <div class="flex justify-between items-start mb-2">
+                <h3 class="font-semibold text-gray-800">{{ post.title }}</h3>
+                <div class="flex space-x-2">
+                  <button @click="editPost(post)" class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
+                  <button @click="deletePost(post.id)" class="text-red-600 hover:text-red-800 text-sm">删除</button>
                 </div>
-            `).join('');
-        }
+              </div>
+              <p class="text-sm text-gray-600 mb-2">作者: {{ post.author }}</p>
+              <p class="text-gray-700 text-sm mb-2">{{ post.content.substring(0, 100) }}{{ post.content.length > 100 ? '...' : '' }}</p>
+              <div class="flex flex-wrap gap-1 mb-2">
+                <span v-for="tag in post.tags" :key="tag" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{{ tag }}</span>
+              </div>
+              <p class="text-xs text-gray-500">{{ formatDate(post.createdAt) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        // 添加文章
-        async function addPost() {
-            const title = document.getElementById('postTitle').value.trim();
-            const author = document.getElementById('postAuthor').value.trim();
-            const content = document.getElementById('postContent').value.trim();
-            const tagsStr = document.getElementById('postTags').value.trim();
+      <!-- 评论管理面板 -->
+      <div v-show="activeTab === 'comments'" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 评论操作 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">评论操作</h2>
+          
+          <div class="space-y-4">
+            <select v-model="commentForm.postId" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">选择文章</option>
+              <option v-for="post in posts" :key="post.id" :value="post.id">{{ post.title }}</option>
+            </select>
+            <input v-model="commentForm.author" type="text" placeholder="评论者" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <textarea v-model="commentForm.content" placeholder="评论内容" rows="4"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
             
-            if (!title || !author || !content) {
-                log('请填写完整的文章信息', 'error');
-                return;
-            }
-            
-            const tags = tagsStr ? tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-            
-            try {
-                const newPost = await store.post('posts', {
-                    title,
-                    author,
-                    content,
-                    tags,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                });
-                
-                log(`发布文章成功: ${newPost.title}`, 'success');
-                clearPostForm();
-                loadPosts();
-                updatePostSelect();
-            } catch (error) {
-                log('发布文章失败: ' + error.message, 'error');
-            }
-        }
+            <div class="flex space-x-2">
+              <button v-if="!currentEditingCommentId" @click="addComment" :disabled="!isCommentFormValid"
+                      :class="['flex-1 py-2 rounded-md transition-colors', 
+                              isCommentFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                发表评论
+              </button>
+              <button v-if="currentEditingCommentId" @click="updateComment" :disabled="!isCommentFormValid"
+                      class="flex-1 bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
+                更新评论
+              </button>
+              <button v-if="currentEditingCommentId" @click="cancelCommentEdit"
+                      class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
 
-        // 编辑文章
-        async function editPost(id) {
-            try {
-                const post = await store.get(`posts/${id}`);
-                if (post) {
-                    document.getElementById('postTitle').value = post.title;
-                    document.getElementById('postAuthor').value = post.author;
-                    document.getElementById('postContent').value = post.content;
-                    document.getElementById('postTags').value = post.tags.join(', ');
-                    
-                    currentEditingPostId = id;
-                    document.getElementById('updatePostBtn').style.display = 'block';
-                    document.getElementById('cancelEditBtn').style.display = 'block';
-                    
-                    log(`开始编辑文章: ${post.title}`, 'info');
+        <!-- 评论列表 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">评论列表</h2>
+            <span class="text-sm text-gray-500">共 {{ comments.length }} 条评论</span>
+          </div>
+          <div class="space-y-3 max-h-96 overflow-y-auto">
+            <div v-if="comments.length === 0" class="text-gray-500 text-center py-4">暂无评论</div>
+            <div v-for="comment in comments" :key="comment.id" class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h4 class="font-semibold text-gray-800">{{ comment.author }}</h4>
+                  <p class="text-xs text-gray-500">评论文章: {{ getPostTitle(comment.postId) }}</p>
+                </div>
+                <div class="flex space-x-2">
+                  <button @click="editComment(comment)" class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
+                  <button @click="deleteComment(comment.id)" class="text-red-600 hover:text-red-800 text-sm">删除</button>
+                </div>
+              </div>
+              <p class="text-gray-700 text-sm mb-2">{{ comment.content }}</p>
+              <p class="text-xs text-gray-500">{{ formatDate(comment.createdAt) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 博客预览面板 -->
+      <div v-show="activeTab === 'view'" class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-6">博客预览</h2>
+        <div class="space-y-8">
+          <div v-if="posts.length === 0" class="text-gray-500 text-center py-8">暂无文章</div>
+          <article v-for="post in posts" :key="post.id" class="border-b border-gray-200 pb-8 mb-8 last:border-b-0">
+            <header class="mb-4">
+              <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ post.title }}</h2>
+              <div class="flex items-center text-sm text-gray-600 mb-3">
+                <span>作者: {{ post.author }}</span>
+                <span class="mx-2">•</span>
+                <span>{{ formatDate(post.createdAt) }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2 mb-4">
+                <span v-for="tag in post.tags" :key="tag" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{{ tag }}</span>
+              </div>
+            </header>
+
+            <div class="prose max-w-none mb-6">
+              <p class="text-gray-700 leading-relaxed">{{ post.content }}</p>
+            </div>
+
+            <div class="comments">
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">评论 ({{ getPostComments(post.id).length }})</h3>
+              <div v-if="getPostComments(post.id).length === 0" class="text-gray-500 text-sm">暂无评论</div>
+              <div v-for="comment in getPostComments(post.id)" :key="comment.id" class="bg-gray-50 rounded-lg p-4 mb-3">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-medium text-gray-800">{{ comment.author }}</h4>
+                  <span class="text-xs text-gray-500">{{ formatDate(comment.createdAt) }}</span>
+                </div>
+                <p class="text-gray-700 text-sm">{{ comment.content }}</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- 操作日志 -->
+      <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">操作日志</h2>
+          <button @click="clearLog" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-md h-32 overflow-y-auto font-mono text-sm">
+          <div v-for="(log, index) in logs" :key="index" :class="log.class">
+            [{{ log.timestamp }}] {{ log.message }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+    createApp({
+      setup() {
+        // 响应式数据
+        const store = ref(null);
+        const posts = ref([]);
+        const comments = ref([]);
+        const logs = ref([]);
+        const isLoading = ref(true);
+        const loadingMessage = ref('正在加载资源...');
+        const activeTab = ref('posts');
+        const currentEditingPostId = ref(null);
+        const currentEditingCommentId = ref(null);
+
+        // 表单数据
+        const postForm = reactive({
+          title: '',
+          author: '',
+          content: '',
+          tags: ''
+        });
+
+        const commentForm = reactive({
+          postId: '',
+          author: '',
+          content: ''
+        });
+
+        // 计算属性 - 表单验证
+        const isPostFormValid = computed(() => {
+          return postForm.title.trim() && 
+                 postForm.author.trim() && 
+                 postForm.content.trim();
+        });
+
+        const isCommentFormValid = computed(() => {
+          return commentForm.postId && 
+                 commentForm.author.trim() && 
+                 commentForm.content.trim();
+        });
+
+        // 检查 UnoCSS 是否准备好
+        const checkUnoReady = () => {
+          return new Promise((resolve) => {
+            let checkCount = 0;
+            const maxChecks = 50;
+
+            const checkInterval = setInterval(() => {
+              checkCount++;
+
+              const hasRuntime = window.__unocss_runtime;
+              const hasStyles = document.querySelector('style[data-unocss]') ||
+                document.querySelector('link[href*="unocss"]') ||
+                document.querySelector('style').textContent.includes('bg-gray-50');
+
+              if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                document.getElementById('app').className = 'uno-ready';
+                resolve();
+              }
+            }, 100);
+          });
+        };
+
+        // 初始化 store
+        const initStore = async () => {
+          try {
+            // 等待 UnoCSS 准备就绪
+            loadingMessage.value = '正在加载样式资源...';
+            await checkUnoReady();
+
+            loadingMessage.value = '正在初始化数据存储...';
+
+            store.value = await JsLiteRest.create({
+              posts: [
+                {
+                  id: 1,
+                  title: 'js-lite-rest 入门指南',
+                  author: 'Alice',
+                  content: '这是一个轻量级的前端数据存储库，支持 RESTful 风格的 CRUD 操作。它可以在浏览器中使用 localStorage，在 Node.js 中使用文件系统进行数据持久化。',
+                  tags: ['JavaScript', '前端', '数据存储'],
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString()
+                },
+                {
+                  id: 2,
+                  title: '中间件系统详解',
+                  author: 'Bob',
+                  content: 'js-lite-rest 提供了强大的中间件系统，允许你在请求前后执行自定义逻辑。你可以用它来实现日志记录、数据验证、权限控制等功能。',
+                  tags: ['中间件', '架构设计'],
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString()
                 }
-            } catch (error) {
-                log('获取文章信息失败: ' + error.message, 'error');
-            }
-        }
-
-        // 更新文章
-        async function updatePost() {
-            if (!currentEditingPostId) return;
-            
-            const title = document.getElementById('postTitle').value.trim();
-            const author = document.getElementById('postAuthor').value.trim();
-            const content = document.getElementById('postContent').value.trim();
-            const tagsStr = document.getElementById('postTags').value.trim();
-            
-            if (!title || !author || !content) {
-                log('请填写完整的文章信息', 'error');
-                return;
-            }
-            
-            const tags = tagsStr ? tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-            
-            try {
-                const updatedPost = await store.patch(`posts/${currentEditingPostId}`, {
-                    title,
-                    author,
-                    content,
-                    tags,
-                    updatedAt: new Date().toISOString()
-                });
-                
-                log(`更新文章成功: ${updatedPost.title}`, 'success');
-                cancelEdit();
-                loadPosts();
-                updatePostSelect();
-            } catch (error) {
-                log('更新文章失败: ' + error.message, 'error');
-            }
-        }
-
-        // 取消编辑
-        function cancelEdit() {
-            currentEditingPostId = null;
-            clearPostForm();
-            document.getElementById('updatePostBtn').style.display = 'none';
-            document.getElementById('cancelEditBtn').style.display = 'none';
-        }
-
-        // 清空文章表单
-        function clearPostForm() {
-            document.getElementById('postTitle').value = '';
-            document.getElementById('postAuthor').value = '';
-            document.getElementById('postContent').value = '';
-            document.getElementById('postTags').value = '';
-        }
-
-        // 删除文章
-        async function deletePost(id) {
-            if (confirm('确定要删除这篇文章吗？相关评论也会被删除。')) {
-                try {
-                    // 先删除相关评论
-                    const comments = await store.get('comments', { postId: id });
-                    for (const comment of comments) {
-                        await store.delete(`comments/${comment.id}`);
-                    }
-                    
-                    // 再删除文章
-                    await store.delete(`posts/${id}`);
-                    
-                    log(`删除文章成功 (ID: ${id})`, 'success');
-                    loadPosts();
-                    loadComments();
-                    updatePostSelect();
-                } catch (error) {
-                    log('删除文章失败: ' + error.message, 'error');
+              ],
+              comments: [
+                {
+                  id: 1,
+                  postId: 1,
+                  author: 'Charlie',
+                  content: '这个库看起来很有用！我正在寻找一个轻量级的前端数据存储解决方案。',
+                  createdAt: new Date().toISOString()
+                },
+                {
+                  id: 2,
+                  postId: 1,
+                  author: 'David',
+                  content: '文档写得很清楚，API 设计也很直观。赞！',
+                  createdAt: new Date().toISOString()
+                },
+                {
+                  id: 3,
+                  postId: 2,
+                  author: 'Eve',
+                  content: '中间件系统的设计很棒，给了开发者很大的灵活性。',
+                  createdAt: new Date().toISOString()
                 }
-            }
-        }
-
-        // 更新文章选择下拉框
-        async function updatePostSelect() {
-            try {
-                const posts = await store.get('posts');
-                const select = document.getElementById('commentPostId');
-                select.innerHTML = '<option value="">选择文章</option>';
-                posts.forEach(post => {
-                    select.innerHTML += `<option value="${post.id}">${post.title}</option>`;
-                });
-            } catch (error) {
-                log('更新文章选择失败: ' + error.message, 'error');
-            }
-        }
-
-        // 加载评论列表
-        async function loadComments() {
-            try {
-                const comments = await store.get('comments', { _sort: 'createdAt', _order: 'desc' });
-                displayComments(comments);
-                log(`加载评论成功，共 ${comments.length} 条评论`, 'success');
-            } catch (error) {
-                log('加载评论失败: ' + error.message, 'error');
-            }
-        }
-
-        // 显示评论列表
-        async function displayComments(comments) {
-            const commentList = document.getElementById('commentList');
-            const commentCount = document.getElementById('commentCount');
-
-            commentCount.textContent = `共 ${comments.length} 条评论`;
-
-            if (comments.length === 0) {
-                commentList.innerHTML = '<div class="text-gray-500 text-center py-4">暂无评论</div>';
-                return;
-            }
-
-            // 获取所有文章信息用于显示文章标题
-            const posts = await store.get('posts');
-            const postMap = {};
-            posts.forEach(post => {
-                postMap[post.id] = post.title;
+              ]
             });
 
-            commentList.innerHTML = comments.map(comment => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="font-semibold text-gray-800">${comment.author}</h4>
-                            <p class="text-xs text-gray-500">评论文章: ${postMap[comment.postId] || '未知文章'}</p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button onclick="editComment(${comment.id})"
-                                    class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
-                            <button onclick="deleteComment(${comment.id})"
-                                    class="text-red-600 hover:text-red-800 text-sm">删除</button>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 text-sm mb-2">${comment.content}</p>
-                    <p class="text-xs text-gray-500">${new Date(comment.createdAt).toLocaleString()}</p>
-                </div>
-            `).join('');
-        }
+            log('博客系统初始化成功');
+
+            loadingMessage.value = '正在加载数据...';
+            await loadPosts();
+            await loadComments();
+
+            // 初始化完成，隐藏加载状态
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 500);
+
+          } catch (error) {
+            log('博客系统初始化失败: ' + error.message, 'error');
+            loadingMessage.value = '初始化失败，请刷新页面重试';
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 2000);
+          }
+        };
+
+        // 日志记录
+        const log = (message, type = 'info') => {
+          const timestamp = new Date().toLocaleTimeString();
+          const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600';
+          logs.value.push({
+            timestamp,
+            message,
+            class: colorClass
+          });
+        };
+
+        // 清空日志
+        const clearLog = () => {
+          logs.value = [];
+        };
+
+        // 格式化日期
+        const formatDate = (dateString) => {
+          return new Date(dateString).toLocaleString();
+        };
+
+        // 加载文章列表
+        const loadPosts = async () => {
+          try {
+            const result = await store.value.get('posts', { _sort: 'createdAt', _order: 'desc' });
+            posts.value = result;
+            log(`加载文章成功，共 ${result.length} 篇文章`, 'success');
+          } catch (error) {
+            log('加载文章失败: ' + error.message, 'error');
+          }
+        };
+
+        // 加载评论列表
+        const loadComments = async () => {
+          try {
+            const result = await store.value.get('comments', { _sort: 'createdAt', _order: 'desc' });
+            comments.value = result;
+            log(`加载评论成功，共 ${result.length} 条评论`, 'success');
+          } catch (error) {
+            log('加载评论失败: ' + error.message, 'error');
+          }
+        };
+
+        // 添加文章
+        const addPost = async () => {
+          if (!isPostFormValid.value) {
+            log('请填写完整的文章信息', 'error');
+            return;
+          }
+
+          const tags = postForm.tags ? postForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+
+          try {
+            const newPost = await store.value.post('posts', {
+              title: postForm.title,
+              author: postForm.author,
+              content: postForm.content,
+              tags,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+
+            log(`发布文章成功: ${newPost.title}`, 'success');
+            clearPostForm();
+            await loadPosts();
+          } catch (error) {
+            log('发布文章失败: ' + error.message, 'error');
+          }
+        };
+
+        // 编辑文章
+        const editPost = (post) => {
+          postForm.title = post.title;
+          postForm.author = post.author;
+          postForm.content = post.content;
+          postForm.tags = post.tags.join(', ');
+          currentEditingPostId.value = post.id;
+          log(`开始编辑文章: ${post.title}`, 'info');
+        };
+
+        // 更新文章
+        const updatePost = async () => {
+          if (!currentEditingPostId.value || !isPostFormValid.value) {
+            log('请填写完整的文章信息', 'error');
+            return;
+          }
+
+          const tags = postForm.tags ? postForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+
+          try {
+            const updatedPost = await store.value.patch(`posts/${currentEditingPostId.value}`, {
+              title: postForm.title,
+              author: postForm.author,
+              content: postForm.content,
+              tags,
+              updatedAt: new Date().toISOString()
+            });
+
+            log(`更新文章成功: ${updatedPost.title}`, 'success');
+            cancelEdit();
+            await loadPosts();
+          } catch (error) {
+            log('更新文章失败: ' + error.message, 'error');
+          }
+        };
+
+        // 取消编辑
+        const cancelEdit = () => {
+          currentEditingPostId.value = null;
+          clearPostForm();
+        };
+
+        // 清空文章表单
+        const clearPostForm = () => {
+          postForm.title = '';
+          postForm.author = '';
+          postForm.content = '';
+          postForm.tags = '';
+        };
+
+        // 删除文章
+        const deletePost = async (id) => {
+          if (confirm('确定要删除这篇文章吗？相关评论也会被删除。')) {
+            try {
+              // 先删除相关评论
+              const relatedComments = comments.value.filter(comment => comment.postId == id);
+              for (const comment of relatedComments) {
+                await store.value.delete(`comments/${comment.id}`);
+              }
+
+              // 再删除文章
+              await store.value.delete(`posts/${id}`);
+
+              log(`删除文章成功 (ID: ${id})`, 'success');
+              await loadPosts();
+              await loadComments();
+            } catch (error) {
+              log('删除文章失败: ' + error.message, 'error');
+            }
+          }
+        };
 
         // 添加评论
-        async function addComment() {
-            const postId = parseInt(document.getElementById('commentPostId').value);
-            const author = document.getElementById('commentAuthor').value.trim();
-            const content = document.getElementById('commentContent').value.trim();
+        const addComment = async () => {
+          if (!isCommentFormValid.value) {
+            log('请填写完整的评论信息', 'error');
+            return;
+          }
 
-            if (!postId || !author || !content) {
-                log('请填写完整的评论信息', 'error');
-                return;
-            }
+          // 智能处理 postId 类型
+          const postIdStr = commentForm.postId;
+          const postId = !isNaN(postIdStr) && !isNaN(parseFloat(postIdStr)) ? parseInt(postIdStr) : postIdStr;
 
-            try {
-                const newComment = await store.post('comments', {
-                    postId,
-                    author,
-                    content,
-                    createdAt: new Date().toISOString()
-                });
+          try {
+            const newComment = await store.value.post('comments', {
+              postId,
+              author: commentForm.author,
+              content: commentForm.content,
+              createdAt: new Date().toISOString()
+            });
 
-                log(`发表评论成功: ${newComment.author}`, 'success');
-                clearCommentForm();
-                loadComments();
-            } catch (error) {
-                log('发表评论失败: ' + error.message, 'error');
-            }
-        }
+            log(`发表评论成功: ${newComment.author}`, 'success');
+            clearCommentForm();
+            await loadComments();
+          } catch (error) {
+            log('发表评论失败: ' + error.message, 'error');
+          }
+        };
 
         // 编辑评论
-        async function editComment(id) {
-            try {
-                const comment = await store.get(`comments/${id}`);
-                if (comment) {
-                    document.getElementById('commentPostId').value = comment.postId;
-                    document.getElementById('commentAuthor').value = comment.author;
-                    document.getElementById('commentContent').value = comment.content;
-
-                    currentEditingCommentId = id;
-                    document.getElementById('updateCommentBtn').style.display = 'block';
-                    document.getElementById('cancelCommentEditBtn').style.display = 'block';
-
-                    log(`开始编辑评论: ${comment.author}`, 'info');
-                }
-            } catch (error) {
-                log('获取评论信息失败: ' + error.message, 'error');
-            }
-        }
+        const editComment = (comment) => {
+          commentForm.postId = comment.postId;
+          commentForm.author = comment.author;
+          commentForm.content = comment.content;
+          currentEditingCommentId.value = comment.id;
+          log(`开始编辑评论: ${comment.author}`, 'info');
+        };
 
         // 更新评论
-        async function updateComment() {
-            if (!currentEditingCommentId) return;
+        const updateComment = async () => {
+          if (!currentEditingCommentId.value || !isCommentFormValid.value) {
+            log('请填写完整的评论信息', 'error');
+            return;
+          }
 
-            const postId = parseInt(document.getElementById('commentPostId').value);
-            const author = document.getElementById('commentAuthor').value.trim();
-            const content = document.getElementById('commentContent').value.trim();
+          // 智能处理 postId 类型
+          const postIdStr = commentForm.postId;
+          const postId = !isNaN(postIdStr) && !isNaN(parseFloat(postIdStr)) ? parseInt(postIdStr) : postIdStr;
 
-            if (!postId || !author || !content) {
-                log('请填写完整的评论信息', 'error');
-                return;
-            }
+          try {
+            const updatedComment = await store.value.patch(`comments/${currentEditingCommentId.value}`, {
+              postId,
+              author: commentForm.author,
+              content: commentForm.content
+            });
 
-            try {
-                const updatedComment = await store.patch(`comments/${currentEditingCommentId}`, {
-                    postId,
-                    author,
-                    content
-                });
-
-                log(`更新评论成功: ${updatedComment.author}`, 'success');
-                cancelCommentEdit();
-                loadComments();
-            } catch (error) {
-                log('更新评论失败: ' + error.message, 'error');
-            }
-        }
+            log(`更新评论成功: ${updatedComment.author}`, 'success');
+            cancelCommentEdit();
+            await loadComments();
+          } catch (error) {
+            log('更新评论失败: ' + error.message, 'error');
+          }
+        };
 
         // 取消评论编辑
-        function cancelCommentEdit() {
-            currentEditingCommentId = null;
-            clearCommentForm();
-            document.getElementById('updateCommentBtn').style.display = 'none';
-            document.getElementById('cancelCommentEditBtn').style.display = 'none';
-        }
+        const cancelCommentEdit = () => {
+          currentEditingCommentId.value = null;
+          clearCommentForm();
+        };
 
         // 清空评论表单
-        function clearCommentForm() {
-            document.getElementById('commentPostId').value = '';
-            document.getElementById('commentAuthor').value = '';
-            document.getElementById('commentContent').value = '';
-        }
+        const clearCommentForm = () => {
+          commentForm.postId = '';
+          commentForm.author = '';
+          commentForm.content = '';
+        };
 
         // 删除评论
-        async function deleteComment(id) {
-            if (confirm('确定要删除这条评论吗？')) {
-                try {
-                    await store.delete(`comments/${id}`);
-                    log(`删除评论成功 (ID: ${id})`, 'success');
-                    loadComments();
-                } catch (error) {
-                    log('删除评论失败: ' + error.message, 'error');
-                }
+        const deleteComment = async (id) => {
+          if (confirm('确定要删除这条评论吗？')) {
+            try {
+              await store.value.delete(`comments/${id}`);
+              log(`删除评论成功 (ID: ${id})`, 'success');
+              await loadComments();
+            } catch (error) {
+              log('删除评论失败: ' + error.message, 'error');
             }
-        }
+          }
+        };
+
+        // 获取文章标题
+        const getPostTitle = (postId) => {
+          const post = posts.value.find(p => p.id == postId);
+          return post ? post.title : '未知文章';
+        };
+
+        // 获取文章的评论
+        const getPostComments = (postId) => {
+          return comments.value.filter(comment => comment.postId == postId)
+                                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        };
 
         // 显示博客预览
-        async function showBlogView() {
-            try {
-                const posts = await store.get('posts', { _sort: 'createdAt', _order: 'desc' });
-                const blogView = document.getElementById('blogView');
+        const showBlogView = () => {
+          // 这里可以添加预览时的特殊逻辑
+        };
 
-                if (posts.length === 0) {
-                    blogView.innerHTML = '<div class="text-gray-500 text-center py-8">暂无文章</div>';
-                    return;
-                }
+        // 页面挂载时初始化
+        onMounted(() => {
+          initStore();
+        });
 
-                let html = '';
-                for (const post of posts) {
-                    const comments = await store.get('comments', { postId: post.id, _sort: 'createdAt', _order: 'asc' });
+        return {
+          // 数据
+          isLoading,
+          loadingMessage,
+          activeTab,
+          posts,
+          comments,
+          logs,
+          postForm,
+          commentForm,
+          currentEditingPostId,
+          currentEditingCommentId,
 
-                    html += `
-                        <article class="border-b border-gray-200 pb-8 mb-8 last:border-b-0">
-                            <header class="mb-4">
-                                <h2 class="text-2xl font-bold text-gray-800 mb-2">${post.title}</h2>
-                                <div class="flex items-center text-sm text-gray-600 mb-3">
-                                    <span>作者: ${post.author}</span>
-                                    <span class="mx-2">•</span>
-                                    <span>${new Date(post.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${post.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">${tag}</span>`).join('')}
-                                </div>
-                            </header>
+          // 计算属性
+          isPostFormValid,
+          isCommentFormValid,
 
-                            <div class="prose max-w-none mb-6">
-                                <p class="text-gray-700 leading-relaxed">${post.content}</p>
-                            </div>
-
-                            <div class="comments">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">评论 (${comments.length})</h3>
-                                ${comments.length === 0 ?
-                                    '<p class="text-gray-500 text-sm">暂无评论</p>' :
-                                    comments.map(comment => `
-                                        <div class="bg-gray-50 rounded-lg p-4 mb-3">
-                                            <div class="flex justify-between items-start mb-2">
-                                                <h4 class="font-medium text-gray-800">${comment.author}</h4>
-                                                <span class="text-xs text-gray-500">${new Date(comment.createdAt).toLocaleString()}</span>
-                                            </div>
-                                            <p class="text-gray-700 text-sm">${comment.content}</p>
-                                        </div>
-                                    `).join('')
-                                }
-                            </div>
-                        </article>
-                    `;
-                }
-
-                blogView.innerHTML = html;
-            } catch (error) {
-                log('显示博客预览失败: ' + error.message, 'error');
-            }
-        }
-
-        // 页面加载时初始化
-        window.addEventListener('load', initStore);
-    </script>
+          // 方法
+          log,
+          clearLog,
+          formatDate,
+          loadPosts,
+          loadComments,
+          addPost,
+          editPost,
+          updatePost,
+          cancelEdit,
+          deletePost,
+          addComment,
+          editComment,
+          updateComment,
+          cancelCommentEdit,
+          deleteComment,
+          getPostTitle,
+          getPostComments,
+          showBlogView
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
+
 </html>

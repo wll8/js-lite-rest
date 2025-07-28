@@ -1,458 +1,647 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中间件示例 - js-lite-rest</title>
-    <!-- UnoCSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
-    <!-- js-lite-rest UMD -->
-    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中间件示例 - js-lite-rest</title>
+  <!-- Vue 3 UMD -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- js-lite-rest UMD -->
+  <script src="../../../dist/js-lite-rest.browser.umd.js"></script>
+  <style>
+    /* 初始白屏样式，防止未样式化的内容闪烁 */
+    body {
+      background: #f9fafb;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 在UnoCSS加载前完全隐藏所有内容，只显示白屏 */
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* UnoCSS加载完成后显示内容 */
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* 加载状态样式 */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <nav class="mb-4">
-                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
-            </nav>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">中间件示例</h1>
-            <p class="text-gray-600">演示 js-lite-rest 的中间件功能，包括日志记录、数据验证、权限控制等</p>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- 中间件控制面板 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">中间件控制</h2>
-                
-                <!-- 中间件开关 -->
-                <div class="space-y-4 mb-6">
-                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <div>
-                            <h3 class="font-medium">日志中间件</h3>
-                            <p class="text-sm text-gray-600">记录所有 API 调用</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="logMiddleware" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <div>
-                            <h3 class="font-medium">验证中间件</h3>
-                            <p class="text-sm text-gray-600">验证数据格式和必填字段</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="validationMiddleware" class="sr-only peer" checked>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <div>
-                            <h3 class="font-medium">权限中间件</h3>
-                            <p class="text-sm text-gray-600">模拟用户权限检查</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="authMiddleware" class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <div>
-                            <h3 class="font-medium">缓存中间件</h3>
-                            <p class="text-sm text-gray-600">缓存 GET 请求结果</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="cacheMiddleware" class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                    </div>
-                </div>
-
-                <button onclick="setupMiddlewares()" 
-                        class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors mb-4">
-                    重新配置中间件
-                </button>
-
-                <!-- 用户权限设置 -->
-                <div class="p-3 border border-gray-200 rounded-lg">
-                    <h3 class="font-medium mb-2">用户权限设置</h3>
-                    <select id="userRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="admin">管理员 (所有权限)</option>
-                        <option value="user">普通用户 (只读权限)</option>
-                        <option value="guest">访客 (无权限)</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- 操作测试面板 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">操作测试</h2>
-                
-                <!-- 产品操作 -->
-                <div class="space-y-4">
-                    <div class="p-4 border border-gray-200 rounded-lg">
-                        <h3 class="font-semibold mb-3">添加产品 (POST)</h3>
-                        <div class="space-y-2">
-                            <input type="text" id="productName" placeholder="产品名称" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <input type="number" id="productPrice" placeholder="价格" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <input type="text" id="productCategory" placeholder="分类" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <button onclick="addProduct()" 
-                                    class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
-                                添加产品
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="p-4 border border-gray-200 rounded-lg">
-                        <h3 class="font-semibold mb-3">获取产品 (GET)</h3>
-                        <div class="flex space-x-2">
-                            <button onclick="getProducts()" 
-                                    class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
-                                获取所有产品
-                            </button>
-                            <button onclick="getProducts(true)" 
-                                    class="flex-1 bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition-colors">
-                                测试缓存
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="p-4 border border-gray-200 rounded-lg">
-                        <h3 class="font-semibold mb-3">更新产品 (PUT)</h3>
-                        <div class="space-y-2">
-                            <input type="number" id="updateProductId" placeholder="产品ID" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <input type="text" id="updateProductName" placeholder="新产品名称" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <button onclick="updateProduct()" 
-                                    class="w-full bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
-                                更新产品
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="p-4 border border-gray-200 rounded-lg">
-                        <h3 class="font-semibold mb-3">删除产品 (DELETE)</h3>
-                        <div class="space-y-2">
-                            <input type="number" id="deleteProductId" placeholder="产品ID" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <button onclick="deleteProduct()" 
-                                    class="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors">
-                                删除产品
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 产品列表 -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">产品列表</h2>
-                <span id="productCount" class="text-sm text-gray-500">共 0 个产品</span>
-            </div>
-            <div id="productList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- 产品列表将在这里显示 -->
-            </div>
-        </div>
-
-        <!-- 中间件日志 -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">中间件日志</h2>
-                <button onclick="clearMiddlewareLog()" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
-            </div>
-            <div id="middlewareLog" class="bg-gray-50 p-4 rounded-md h-64 overflow-y-auto font-mono text-sm">
-                <!-- 中间件日志将在这里显示 -->
-            </div>
-        </div>
+  <div id="app">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="text-center">
+        <div class="loading-spinner mx-auto mb-4"></div>
+        <p class="text-gray-600">{{ loadingMessage }}</p>
+      </div>
     </div>
 
-    <script>
-        let store;
-        let cache = new Map();
-        
+    <div class="container mx-auto px-4 py-8">
+      <header class="mb-8">
+        <nav class="mb-4">
+          <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">中间件示例</h1>
+        <p class="text-gray-600">演示 js-lite-rest 的中间件功能，包括日志记录、数据验证、权限控制等</p>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 中间件控制面板 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">中间件控制</h2>
+          
+          <!-- 中间件开关 -->
+          <div class="space-y-4 mb-6">
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div>
+                <h3 class="font-medium">日志中间件</h3>
+                <p class="text-sm text-gray-600">记录所有 API 调用</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="middlewareConfig.log" @change="applyMiddlewares" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div>
+                <h3 class="font-medium">验证中间件</h3>
+                <p class="text-sm text-gray-600">验证数据格式和必填字段</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="middlewareConfig.validation" @change="applyMiddlewares" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div>
+                <h3 class="font-medium">权限中间件</h3>
+                <p class="text-sm text-gray-600">模拟用户权限检查</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="middlewareConfig.auth" @change="applyMiddlewares" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div>
+                <h3 class="font-medium">缓存中间件</h3>
+                <p class="text-sm text-gray-600">缓存 GET 请求结果</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="middlewareConfig.cache" @change="applyMiddlewares" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 用户权限设置 -->
+          <div class="p-3 border border-gray-200 rounded-lg mb-4">
+            <h3 class="font-medium mb-2">用户权限设置</h3>
+            <select v-model="userRole" @change="applyMiddlewares" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="admin">管理员 (所有权限)</option>
+              <option value="user">普通用户 (只读权限)</option>
+              <option value="guest">访客 (无权限)</option>
+            </select>
+          </div>
+
+          <button @click="resetToDefault" class="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+            重置中间件
+          </button>
+        </div>
+
+        <!-- 操作测试面板 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">操作测试</h2>
+          
+          <!-- 产品操作 -->
+          <div class="space-y-4">
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <h3 class="font-semibold mb-3">添加产品 (POST)</h3>
+              <div class="space-y-2">
+                <input type="text" v-model="form.name" placeholder="产品名称" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="number" v-model.number="form.price" placeholder="价格" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" v-model="form.category" placeholder="分类" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button @click="addProduct" :disabled="!isFormValid"
+                        :class="['w-full py-2 rounded-md transition-colors', isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                  添加产品
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <h3 class="font-semibold mb-3">获取产品 (GET)</h3>
+              <button @click="getProducts" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                获取所有产品
+              </button>
+            </div>
+
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <h3 class="font-semibold mb-3">更新产品 (PUT)</h3>
+              <div class="space-y-2">
+                <input type="text" v-model="update.id" placeholder="产品ID" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" v-model="update.name" placeholder="新产品名称" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button @click="updateProduct" :disabled="!update.id || !update.name"
+                        :class="['w-full py-2 rounded-md transition-colors', (update.id && update.name) ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                  更新产品
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <h3 class="font-semibold mb-3">删除产品 (DELETE)</h3>
+              <div class="space-y-2">
+                <input type="text" v-model="deleteId" placeholder="产品ID" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button @click="deleteProduct" :disabled="!deleteId"
+                        :class="['w-full py-2 rounded-md transition-colors', deleteId ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                  删除产品
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 产品列表 -->
+      <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">产品列表</h2>
+          <span class="text-sm text-gray-500">共 {{ products.length }} 个产品</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-if="products.length === 0" class="col-span-full text-gray-500 text-center py-8">
+            暂无产品
+          </div>
+          <div v-for="product in products" :key="product.id" class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <h3 class="font-semibold text-gray-800 mb-2">{{ product.name }}</h3>
+            <p class="text-gray-600 text-sm mb-1">ID: {{ product.id }}</p>
+            <p class="text-gray-600 text-sm mb-1">分类: {{ product.category }}</p>
+            <p class="text-lg font-bold text-green-600">¥{{ product.price }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间件日志 -->
+      <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">中间件日志</h2>
+          <button @click="clearMiddlewareLog" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-md h-64 overflow-y-auto font-mono text-sm">
+          <div v-for="(log, index) in middlewareLogs" :key="index" :class="log.class">
+            [{{ log.timestamp }}] {{ log.message }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+    createApp({
+      setup() {
+        // 响应式数据
+        const store = ref(null);
+        const products = ref([]);
+        const middlewareLogs = ref([]);
+        const cache = ref(new Map());
+        const isLoading = ref(true);
+        const loadingMessage = ref('正在加载资源...');
+        const isUnoReady = ref(false);
+
+        // 中间件配置
+        const middlewareConfig = reactive({
+          log: true,
+          validation: true,
+          auth: false,
+          cache: false
+        });
+
+        const userRole = ref('admin');
+
+        // 表单数据
+        const form = reactive({
+          name: '',
+          price: null,
+          category: ''
+        });
+
+        const update = reactive({
+          id: '',
+          name: ''
+        });
+
+        const deleteId = ref('');
+
+        // 计算属性 - 表单验证
+        const isFormValid = computed(() => {
+          return form.name && form.price && form.price > 0 && form.category;
+        });
+
+        // 检查 UnoCSS 是否准备好
+        const checkUnoReady = () => {
+          return new Promise((resolve) => {
+            let checkCount = 0;
+            const maxChecks = 50;
+
+            const checkInterval = setInterval(() => {
+              checkCount++;
+
+              const hasRuntime = window.__unocss_runtime;
+              const hasStyles = document.querySelector('style[data-unocss]') ||
+                document.querySelector('link[href*="unocss"]') ||
+                document.querySelector('style').textContent.includes('bg-gray-50');
+
+              if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                document.getElementById('app').className = 'uno-ready';
+                resolve();
+              }
+            }, 100);
+          });
+        };
+
         // 初始化 store
-        async function initStore() {
-            try {
-                store = await createStore({
-                    products: [
-                        { id: 1, name: 'iPhone 15', price: 5999, category: '手机' },
-                        { id: 2, name: 'MacBook Pro', price: 12999, category: '电脑' },
-                        { id: 3, name: 'AirPods Pro', price: 1999, category: '耳机' }
-                    ]
-                });
-                
-                setupMiddlewares();
-                logMiddleware('Store 初始化成功');
-                loadProducts();
-            } catch (error) {
-                logMiddleware('Store 初始化失败: ' + error.message, 'error');
-            }
-        }
+        const initStore = async () => {
+          try {
+            // 等待 UnoCSS 准备就绪
+            loadingMessage.value = '正在加载样式资源...';
+            await checkUnoReady();
+            isUnoReady.value = true;
+
+            loadingMessage.value = '正在初始化数据存储...';
+
+            store.value = await JsLiteRest.create({
+              products: [
+                { id: 1, name: 'iPhone 15', price: 5999, category: '手机' },
+                { id: 2, name: 'MacBook Pro', price: 12999, category: '电脑' },
+                { id: 3, name: 'AirPods Pro', price: 1999, category: '耳机' }
+              ]
+            });
+
+            applyMiddlewares();
+            logMiddleware('Store 初始化成功');
+
+            loadingMessage.value = '正在加载产品数据...';
+            await loadProducts();
+
+            // 初始化完成
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 500);
+
+          } catch (error) {
+            logMiddleware('Store 初始化失败: ' + error.message, 'error');
+            loadingMessage.value = '初始化失败，请刷新页面重试';
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 2000);
+          }
+        };
 
         // 中间件日志记录
-        function logMiddleware(message, type = 'info') {
-            const logElement = document.getElementById('middlewareLog');
-            const timestamp = new Date().toLocaleTimeString();
-            const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 
-                              type === 'warning' ? 'text-yellow-600' : 'text-blue-600';
-            logElement.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
-            logElement.scrollTop = logElement.scrollHeight;
-        }
+        const logMiddleware = (message, type = 'info') => {
+          const timestamp = new Date().toLocaleTimeString();
+          const colorClass = type === 'error' ? 'text-red-600' : 
+                            type === 'success' ? 'text-green-600' : 
+                            type === 'warning' ? 'text-yellow-600' : 'text-blue-600';
+          middlewareLogs.value.push({
+            timestamp,
+            message,
+            class: colorClass
+          });
+          // 自动滚动到底部
+          setTimeout(() => {
+            const logContainer = document.querySelector('.bg-gray-50.overflow-y-auto');
+            if (logContainer) {
+              logContainer.scrollTop = logContainer.scrollHeight;
+            }
+          }, 0);
+        };
 
         // 清空中间件日志
-        function clearMiddlewareLog() {
-            document.getElementById('middlewareLog').innerHTML = '';
-        }
+        const clearMiddlewareLog = () => {
+          middlewareLogs.value = [];
+        };
 
-        // 设置中间件
-        function setupMiddlewares() {
-            // 清除现有中间件
-            store.middlewares = [];
-            
-            // 日志中间件
-            if (document.getElementById('logMiddleware').checked) {
-                store.use(async (args, next, opt) => {
-                    const [method, path, data] = args;
-                    const startTime = Date.now();
-                    logMiddleware(`🔄 ${method.toUpperCase()} ${path} - 开始执行`);
-                    
-                    try {
-                        const result = await next();
-                        const duration = Date.now() - startTime;
-                        logMiddleware(`✅ ${method.toUpperCase()} ${path} - 执行成功 (${duration}ms)`, 'success');
-                        return result;
-                    } catch (error) {
-                        const duration = Date.now() - startTime;
-                        logMiddleware(`❌ ${method.toUpperCase()} ${path} - 执行失败: ${error.message} (${duration}ms)`, 'error');
-                        throw error;
-                    }
-                });
-            }
+        // 应用中间件配置
+        const applyMiddlewares = () => {
+          if (!store.value) return;
 
-            // 验证中间件
-            if (document.getElementById('validationMiddleware').checked) {
-                store.use(async (args, next, opt) => {
-                    const [method, path, data] = args;
-                    
-                    if (method === 'post' && path === 'products') {
-                        if (!data.name || !data.price || !data.category) {
-                            const error = new Error('产品信息不完整：名称、价格和分类都是必填项');
-                            logMiddleware(`🚫 验证失败: ${error.message}`, 'error');
-                            throw error;
-                        }
-                        
-                        if (typeof data.price !== 'number' || data.price <= 0) {
-                            const error = new Error('价格必须是大于0的数字');
-                            logMiddleware(`🚫 验证失败: ${error.message}`, 'error');
-                            throw error;
-                        }
-                        
-                        logMiddleware(`✅ 数据验证通过`, 'success');
-                    }
-                    
-                    return next();
-                });
-            }
+          // 当用户权限不是管理员时，自动开启权限中间件
+          if (userRole.value !== 'admin') {
+            middlewareConfig.auth = true;
+          }
 
-            // 权限中间件
-            if (document.getElementById('authMiddleware').checked) {
-                store.use(async (args, next, opt) => {
-                    const [method, path] = args;
-                    const userRole = document.getElementById('userRole').value;
-                    
-                    // 检查权限
-                    if (userRole === 'guest') {
-                        const error = new Error('访客无权限执行任何操作');
-                        logMiddleware(`🔒 权限检查失败: ${error.message}`, 'error');
-                        throw error;
-                    }
-                    
-                    if (userRole === 'user' && ['post', 'put', 'patch', 'delete'].includes(method)) {
-                        const error = new Error('普通用户只有只读权限');
-                        logMiddleware(`🔒 权限检查失败: ${error.message}`, 'error');
-                        throw error;
-                    }
-                    
-                    logMiddleware(`🔓 权限检查通过 (${userRole})`, 'success');
-                    return next();
-                });
-            }
+          // 清除现有中间件
+          store.value.middlewares = [];
 
-            // 缓存中间件
-            if (document.getElementById('cacheMiddleware').checked) {
-                store.use(async (args, next, opt) => {
-                    const [method, path, data] = args;
-                    
-                    if (method === 'get') {
-                        const cacheKey = `${method}:${path}:${JSON.stringify(data || {})}`;
-                        
-                        if (cache.has(cacheKey)) {
-                            logMiddleware(`💾 缓存命中: ${path}`, 'success');
-                            return cache.get(cacheKey);
-                        }
-                        
-                        const result = await next();
-                        cache.set(cacheKey, result);
-                        logMiddleware(`💾 结果已缓存: ${path}`, 'info');
-                        return result;
-                    }
-                    
-                    // 非 GET 请求清除相关缓存
-                    if (['post', 'put', 'patch', 'delete'].includes(method)) {
-                        const keysToDelete = [];
-                        for (const key of cache.keys()) {
-                            if (key.includes(path.split('/')[0])) {
-                                keysToDelete.push(key);
-                            }
-                        }
-                        keysToDelete.forEach(key => cache.delete(key));
-                        if (keysToDelete.length > 0) {
-                            logMiddleware(`🗑️ 清除了 ${keysToDelete.length} 个相关缓存`, 'warning');
-                        }
-                    }
-                    
-                    return next();
-                });
-            }
-            
-            logMiddleware('中间件配置完成', 'info');
-        }
+          // 日志中间件
+          if (middlewareConfig.log) {
+            store.value.use(async (args, next, opt) => {
+              const [method, path, data] = args;
+              const startTime = Date.now();
+              logMiddleware(`🔄 ${method.toUpperCase()} ${path} - 开始执行`);
+              
+              try {
+                const result = await next();
+                const duration = Date.now() - startTime;
+                logMiddleware(`✅ ${method.toUpperCase()} ${path} - 执行成功 (${duration}ms)`, 'success');
+                return result;
+              } catch (error) {
+                const duration = Date.now() - startTime;
+                logMiddleware(`❌ ${method.toUpperCase()} ${path} - 执行失败: ${error.message} (${duration}ms)`, 'error');
+                throw error;
+              }
+            });
+          }
+
+          // 验证中间件
+          if (middlewareConfig.validation) {
+            store.value.use(async (args, next, opt) => {
+              const [method, path, data] = args;
+              
+              if (method === 'post' && path === 'products') {
+                if (!data.name || !data.price || !data.category) {
+                  const error = new Error('产品信息不完整：名称、价格和分类都是必填项');
+                  logMiddleware(`🚫 验证失败: ${error.message}`, 'error');
+                  throw error;
+                }
+                
+                if (typeof data.price !== 'number' || data.price <= 0) {
+                  const error = new Error('价格必须是大于0的数字');
+                  logMiddleware(`🚫 验证失败: ${error.message}`, 'error');
+                  throw error;
+                }
+                
+                logMiddleware(`✅ 数据验证通过`, 'success');
+              }
+              
+              return next();
+            });
+          }
+
+          // 权限中间件
+          if (middlewareConfig.auth) {
+            store.value.use(async (args, next, opt) => {
+              const [method, path] = args;
+              
+              // 检查权限
+              if (userRole.value === 'guest') {
+                const error = new Error('访客无权限执行任何操作');
+                logMiddleware(`🔒 权限检查失败: ${error.message}`, 'error');
+                throw error;
+              }
+              
+              if (userRole.value === 'user' && ['post', 'put', 'patch', 'delete'].includes(method)) {
+                const error = new Error('普通用户只有只读权限');
+                logMiddleware(`🔒 权限检查失败: ${error.message}`, 'error');
+                throw error;
+              }
+              
+              logMiddleware(`🔓 权限检查通过 (${userRole.value})`, 'success');
+              return next();
+            });
+          }
+
+          // 缓存中间件
+          if (middlewareConfig.cache) {
+            store.value.use(async (args, next, opt) => {
+              const [method, path, data] = args;
+              
+              if (method === 'get') {
+                const cacheKey = `${method}:${path}:${JSON.stringify(data || {})}`;
+                
+                if (cache.value.has(cacheKey)) {
+                  logMiddleware(`💾 缓存命中: ${path}`, 'success');
+                  return cache.value.get(cacheKey);
+                }
+                
+                const result = await next();
+                cache.value.set(cacheKey, result);
+                logMiddleware(`💾 结果已缓存: ${path}`, 'info');
+                return result;
+              }
+              
+              // 非 GET 请求清除相关缓存
+              if (['post', 'put', 'patch', 'delete'].includes(method)) {
+                const keysToDelete = [];
+                for (const key of cache.value.keys()) {
+                  if (key.includes(path.split('/')[0])) {
+                    keysToDelete.push(key);
+                  }
+                }
+                keysToDelete.forEach(key => cache.value.delete(key));
+                if (keysToDelete.length > 0) {
+                  logMiddleware(`🗑️ 清除了 ${keysToDelete.length} 个相关缓存`, 'warning');
+                }
+              }
+              
+              return next();
+            });
+          }
+          
+          logMiddleware('中间件配置已应用', 'info');
+        };
+
+        // 重置到默认状态
+        const resetToDefault = () => {
+          middlewareConfig.log = true;
+          middlewareConfig.validation = true;
+          middlewareConfig.auth = false;
+          middlewareConfig.cache = false;
+          userRole.value = 'admin';
+          
+          applyMiddlewares();
+          logMiddleware('已重置到默认状态', 'warning');
+        };
 
         // 加载产品列表
-        async function loadProducts() {
-            try {
-                const products = await store.get('products');
-                displayProducts(products);
-            } catch (error) {
-                logMiddleware('加载产品失败: ' + error.message, 'error');
+        const loadProducts = async () => {
+          try {
+            const result = await store.value.get('products');
+            let productList = result;
+            if (result && typeof result === 'object' && result.data) {
+              productList = result.data;
+            } else if (!Array.isArray(result)) {
+              productList = [];
             }
-        }
+            products.value = productList;
+          } catch (error) {
+            logMiddleware('加载产品失败: ' + error.message, 'error');
+            products.value = [];
+          }
+        };
 
         // 显示产品列表
-        function displayProducts(products) {
-            const productList = document.getElementById('productList');
-            const productCount = document.getElementById('productCount');
-
-            productCount.textContent = `共 ${products.length} 个产品`;
-
-            if (products.length === 0) {
-                productList.innerHTML = '<div class="col-span-full text-gray-500 text-center py-8">暂无产品</div>';
-                return;
-            }
-
-            productList.innerHTML = products.map(product => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <h3 class="font-semibold text-gray-800 mb-2">${product.name}</h3>
-                    <p class="text-gray-600 text-sm mb-1">ID: ${product.id}</p>
-                    <p class="text-gray-600 text-sm mb-1">分类: ${product.category}</p>
-                    <p class="text-lg font-bold text-green-600">¥${product.price}</p>
-                </div>
-            `).join('');
-        }
+        const getProducts = async () => {
+          await loadProducts();
+        };
 
         // 添加产品
-        async function addProduct() {
-            const name = document.getElementById('productName').value.trim();
-            const price = parseFloat(document.getElementById('productPrice').value);
-            const category = document.getElementById('productCategory').value.trim();
+        const addProduct = async () => {
+          if (!isFormValid.value) {
+            logMiddleware('请填写完整的产品信息', 'error');
+            return;
+          }
 
-            try {
-                const newProduct = await store.post('products', { name, price, category });
-                logMiddleware(`产品添加成功: ${newProduct.name}`, 'success');
+          try {
+            const result = await store.value.post('products', {
+              name: form.name,
+              price: form.price,
+              category: form.category
+            });
+            
+            const productName = result?.name || result?.data?.name || form.name;
+            logMiddleware(`产品添加成功: ${productName}`, 'success');
 
-                // 清空表单
-                document.getElementById('productName').value = '';
-                document.getElementById('productPrice').value = '';
-                document.getElementById('productCategory').value = '';
+            // 清空表单
+            form.name = '';
+            form.price = null;
+            form.category = '';
 
-                loadProducts();
-            } catch (error) {
-                // 错误已在中间件中记录
-            }
-        }
-
-        // 获取产品
-        async function getProducts(testCache = false) {
-            try {
-                if (testCache) {
-                    logMiddleware('🧪 测试缓存功能 - 连续两次请求', 'info');
-                    await store.get('products');
-                    await store.get('products');
-                } else {
-                    const products = await store.get('products');
-                    displayProducts(products);
-                }
-            } catch (error) {
-                // 错误已在中间件中记录
-            }
-        }
+            await loadProducts();
+          } catch (error) {
+            // 错误已在中间件中记录
+          }
+        };
 
         // 更新产品
-        async function updateProduct() {
-            const id = parseInt(document.getElementById('updateProductId').value);
-            const name = document.getElementById('updateProductName').value.trim();
+        const updateProduct = async () => {
+          if (!update.id || !update.name) {
+            logMiddleware('请填写产品ID和新名称', 'error');
+            return;
+          }
 
-            if (!id || !name) {
-                logMiddleware('请填写产品ID和新名称', 'error');
-                return;
+          try {
+            const result = await store.value.patch(`products/${update.id}`, { name: update.name });
+            if (result) {
+              const productName = result?.name || result?.data?.name || update.name;
+              logMiddleware(`产品更新成功: ${productName}`, 'success');
+
+              // 清空表单
+              update.id = '';
+              update.name = '';
+
+              await loadProducts();
+            } else {
+              logMiddleware(`产品 ID ${update.id} 不存在`, 'error');
             }
-
-            try {
-                const updatedProduct = await store.patch(`products/${id}`, { name });
-                if (updatedProduct) {
-                    logMiddleware(`产品更新成功: ${updatedProduct.name}`, 'success');
-
-                    // 清空表单
-                    document.getElementById('updateProductId').value = '';
-                    document.getElementById('updateProductName').value = '';
-
-                    loadProducts();
-                } else {
-                    logMiddleware(`产品 ID ${id} 不存在`, 'error');
-                }
-            } catch (error) {
-                // 错误已在中间件中记录
-            }
-        }
+          } catch (error) {
+            // 错误已在中间件中记录
+          }
+        };
 
         // 删除产品
-        async function deleteProduct() {
-            const id = parseInt(document.getElementById('deleteProductId').value);
+        const deleteProduct = async () => {
+          if (!deleteId.value) {
+            logMiddleware('请输入产品ID', 'error');
+            return;
+          }
 
-            if (!id) {
-                logMiddleware('请输入产品ID', 'error');
-                return;
+          try {
+            const result = await store.value.delete(`products/${deleteId.value}`);
+            if (result) {
+              logMiddleware(`产品删除成功 (ID: ${deleteId.value})`, 'success');
+
+              // 清空表单
+              deleteId.value = '';
+
+              await loadProducts();
+            } else {
+              logMiddleware(`产品 ID ${deleteId.value} 不存在`, 'error');
             }
+          } catch (error) {
+            // 错误已在中间件中记录
+          }
+        };
 
-            try {
-                const result = await store.delete(`products/${id}`);
-                if (result) {
-                    logMiddleware(`产品删除成功 (ID: ${id})`, 'success');
+        // 组件挂载时初始化
+        onMounted(() => {
+          initStore();
+        });
 
-                    // 清空表单
-                    document.getElementById('deleteProductId').value = '';
-
-                    loadProducts();
-                } else {
-                    logMiddleware(`产品 ID ${id} 不存在`, 'error');
-                }
-            } catch (error) {
-                // 错误已在中间件中记录
-            }
-        }
-
-        // 页面加载时初始化
-        window.addEventListener('load', initStore);
-    </script>
+        return {
+          // 状态
+          products,
+          middlewareLogs,
+          isLoading,
+          loadingMessage,
+          middlewareConfig,
+          userRole,
+          form,
+          update,
+          deleteId,
+          // 计算属性
+          isFormValid,
+          // 方法
+          applyMiddlewares,
+          resetToDefault,
+          getProducts,
+          addProduct,
+          updateProduct,
+          deleteProduct,
+          clearMiddlewareLog
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
+
 </html>

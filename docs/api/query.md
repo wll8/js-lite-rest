@@ -331,46 +331,6 @@ const posts = await store.get('posts', {
 });
 ```
 
-## 查询性能优化
-
-### 索引友好的查询
-
-```javascript
-// ✅ 好的查询：使用索引字段
-const users = await store.get('users', {
-  id: 123,
-  status: 'active'
-});
-
-// ❌ 避免：复杂的模糊查询
-const users = await store.get('users', {
-  'profile.bio_like': 'very long search term'
-});
-```
-
-### 合理的分页大小
-
-```javascript
-// ✅ 合理的分页大小
-const results = await store.get('posts', { _limit: 20 });
-
-// ❌ 避免：过大的分页
-const results = await store.get('posts', { _limit: 1000 });
-```
-
-### 字段选择优化
-
-```javascript
-// ✅ 只选择需要的字段
-const users = await store.get('users', {
-  _select: ['id', 'name'],
-  _limit: 100
-});
-
-// ❌ 避免：获取所有字段
-const users = await store.get('users', { _limit: 100 });
-```
-
 ## 查询参数参考
 
 | 参数 | 说明 | 示例 |
@@ -389,9 +349,3 @@ const users = await store.get('users', { _limit: 100 });
 | `_end` | 结束位置 | `{ _end: 30 }` |
 | `_select` | 选择字段 | `{ _select: ['id', 'name'] }` |
 | `_omit` | 排除字段 | `{ _omit: ['password'] }` |
-
-## 相关链接
-
-- [CRUD 操作](/api/crud) - 基本的数据操作
-- [关系操作](/api/relations) - 关联数据查询
-- [在线示例](/html-demo/query-features.html) - 查询功能演示

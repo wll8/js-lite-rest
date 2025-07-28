@@ -1,356 +1,577 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基础 CRUD 操作 - js-lite-rest</title>
-    <!-- UnoCSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
-    <!-- js-lite-rest UMD -->
-    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基础 CRUD 操作 - js-lite-rest</title>
+  <!-- Vue 3 UMD -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- js-lite-rest UMD -->
+  <script src="C:\git2\js-lite-rest\dist\js-lite-rest.browser.umd.js"></script>
+  <style>
+    /* 初始白屏样式，防止未样式化的内容闪烁 */
+    body {
+      background: #f9fafb;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 在UnoCSS加载前完全隐藏所有内容，只显示白屏 */
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* UnoCSS加载完成后显示内容 */
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <nav class="mb-4">
-                <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
-            </nav>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">基础 CRUD 操作</h1>
-            <p class="text-gray-600">演示 js-lite-rest 的基本增删改查功能，包括查询操作</p>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- 操作面板 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">操作面板</h2>
-                
-                <!-- 添加用户 -->
-                <div class="mb-6 p-4 border border-gray-200 rounded-lg">
-                    <h3 class="font-semibold mb-3">添加用户 (POST)</h3>
-                    <div class="space-y-3">
-                        <input type="text" id="userName" placeholder="用户名" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="email" id="userEmail" placeholder="邮箱" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="number" id="userAge" placeholder="年龄" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button onclick="addUser()" 
-                                class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors">
-                            添加用户
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 查询用户 -->
-                <div class="mb-6 p-4 border border-gray-200 rounded-lg">
-                    <h3 class="font-semibold mb-3">查询用户 (GET)</h3>
-                    <div class="space-y-3">
-                        <input type="text" id="searchName" placeholder="按姓名搜索" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="number" id="searchMinAge" placeholder="最小年龄" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <div class="flex space-x-2">
-                            <button onclick="searchUsers()" 
-                                    class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
-                                搜索用户
-                            </button>
-                            <button onclick="loadAllUsers()" 
-                                    class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
-                                显示全部
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 更新用户 -->
-                <div class="mb-6 p-4 border border-gray-200 rounded-lg">
-                    <h3 class="font-semibold mb-3">更新用户 (PUT/PATCH)</h3>
-                    <div class="space-y-3">
-                        <input type="number" id="updateId" placeholder="用户ID" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="text" id="updateName" placeholder="新用户名" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="email" id="updateEmail" placeholder="新邮箱" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <div class="flex space-x-2">
-                            <button onclick="updateUser()" 
-                                    class="flex-1 bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors">
-                                完整更新 (PUT)
-                            </button>
-                            <button onclick="patchUser()" 
-                                    class="flex-1 bg-orange-600 text-white py-2 rounded-md hover:bg-orange-700 transition-colors">
-                                部分更新 (PATCH)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 删除用户 -->
-                <div class="p-4 border border-gray-200 rounded-lg">
-                    <h3 class="font-semibold mb-3">删除用户 (DELETE)</h3>
-                    <div class="space-y-3">
-                        <input type="number" id="deleteId" placeholder="用户ID" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button onclick="deleteUser()" 
-                                class="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors">
-                            删除用户
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 数据显示 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">用户列表</h2>
-                    <span id="userCount" class="text-sm text-gray-500">共 0 个用户</span>
-                </div>
-                <div id="userList" class="space-y-3">
-                    <!-- 用户列表将在这里显示 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 操作日志 -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">操作日志</h2>
-                <button onclick="clearLog()" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
-            </div>
-            <div id="operationLog" class="bg-gray-50 p-4 rounded-md h-48 overflow-y-auto font-mono text-sm">
-                <!-- 操作日志将在这里显示 -->
-            </div>
-        </div>
+  <div id="app">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">正在初始化...</h2>
+        <p class="text-gray-500">{{ loadingMessage }}</p>
+      </div>
     </div>
 
-    <script>
-        let store;
-        
+    <!-- 主要内容 -->
+    <div v-else class="container mx-auto px-4 py-8">
+      <header class="mb-8">
+        <nav class="mb-4">
+          <a href="./index.html" class="text-blue-600 hover:text-blue-800">← 返回示例首页</a>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">基础 CRUD 操作</h1>
+        <p class="text-gray-600">演示 js-lite-rest 的基本增删改查功能，包括查询操作</p>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 操作面板 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">操作面板</h2>
+
+          <!-- 添加用户 -->
+          <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-3">添加用户 (POST)</h3>
+            <div class="space-y-3">
+              <input v-model="form.name" type="text" placeholder="用户名"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div>
+                <input v-model="form.email" type="email" placeholder="邮箱"
+                  :class="['w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2', 
+                                               emailValidation.isValid ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500']">
+                <p v-if="!emailValidation.isValid && form.email" class="text-red-500 text-sm mt-1">
+                  {{ emailValidation.message }}
+                </p>
+              </div>
+              <input v-model.number="form.age" type="number" placeholder="年龄"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button @click="addUser" :disabled="!isFormValid"
+                :class="['w-full py-2 rounded-md transition-colors', 
+                                            isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                添加用户
+              </button>
+            </div>
+          </div>
+
+          <!-- 查询用户 -->
+          <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-3">查询用户 (GET)</h3>
+            <div class="space-y-3">
+              <input v-model="search.name" type="text" placeholder="按姓名搜索"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <input v-model.number="search.minAge" type="number" placeholder="最小年龄"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div class="flex space-x-2">
+                <button @click="searchUsers"
+                  class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+                  搜索用户
+                </button>
+                <button @click="loadAllUsers"
+                  class="flex-1 bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">
+                  显示全部
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 更新用户 -->
+          <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-3">更新用户 (PUT/PATCH)</h3>
+            <div class="space-y-3">
+              <input v-model="update.id" type="text" placeholder="用户ID" disabled
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed">
+              <input v-model="update.name" type="text" placeholder="新用户名"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div>
+                <input v-model="update.email" type="email" placeholder="新邮箱"
+                  :class="['w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2', 
+                                               updateEmailValidation.isValid ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500']">
+                <p v-if="!updateEmailValidation.isValid && update.email" class="text-red-500 text-sm mt-1">
+                  {{ updateEmailValidation.message }}
+                </p>
+              </div>
+              <input v-model.number="update.age" type="number" placeholder="新年龄"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div class="flex space-x-2">
+                <button @click="updateUser" :disabled="!isUpdateFormValid"
+                  :class="['flex-1 py-2 rounded-md transition-colors', 
+                                                isUpdateFormValid ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                  完整更新 (PUT)
+                </button>
+                <button @click="patchUser" :disabled="!update.id"
+                  :class="['flex-1 py-2 rounded-md transition-colors', 
+                                                update.id ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                  部分更新 (PATCH)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 删除用户 -->
+          <div class="p-4 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-3">删除用户 (DELETE)</h3>
+            <div class="space-y-3">
+              <select v-model="deleteId"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">请选择要删除的用户</option>
+                <option v-for="user in users" :key="user.id" :value="user.id">
+                  {{ user.name }} (ID: {{ user.id }})
+                </option>
+              </select>
+              <button @click="deleteUser" :disabled="!deleteId"
+                :class="['w-full py-2 rounded-md transition-colors', 
+                                            deleteId ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-400 text-gray-600 cursor-not-allowed']">
+                删除用户
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据显示 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">用户列表</h2>
+            <span class="text-sm text-gray-500">共 {{ users.length }} 个用户</span>
+          </div>
+          <div class="space-y-3">
+            <div v-if="users.length === 0" class="text-gray-500 text-center py-4">
+              暂无用户数据
+            </div>
+            <div v-for="user in users" :key="user.id" class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="font-semibold text-gray-800">ID: {{ user.id }} - {{ user.name }}</h3>
+                  <p class="text-gray-600">{{ user.email }}</p>
+                  <p class="text-sm text-gray-500">年龄: {{ user.age }}</p>
+                </div>
+                <div class="flex space-x-2">
+                  <button @click="fillUpdateForm(user)" class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
+                  <button @click="deleteUserById(user.id)" class="text-red-600 hover:text-red-800 text-sm">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作日志 -->
+      <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">操作日志</h2>
+          <button @click="clearLog" class="text-sm text-red-600 hover:text-red-800">清空日志</button>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-md h-48 overflow-y-auto font-mono text-sm">
+          <div v-for="(log, index) in logs" :key="index" :class="log.class">
+            [{{ log.timestamp }}] {{ log.message }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+    createApp({
+      setup() {
+        // 响应式数据
+        const store = ref(null);
+        const users = ref([]);
+        const logs = ref([]);
+        const isLoading = ref(true);
+        const loadingMessage = ref('正在加载资源...');
+        const isUnoReady = ref(false);
+
+        // 表单数据
+        const form = reactive({
+          name: '',
+          email: '',
+          age: null
+        });
+
+        const search = reactive({
+          name: '',
+          minAge: null
+        });
+
+        const update = reactive({
+          id: '',
+          name: '',
+          email: '',
+          age: null
+        });
+
+        const deleteId = ref('');
+
+        // 邮箱验证函数
+        const validateEmail = (email) => {
+          if (!email) {
+            return { isValid: true, message: '' };
+          }
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const isValid = emailRegex.test(email);
+          return {
+            isValid,
+            message: isValid ? '' : '请输入有效的邮箱地址'
+          };
+        };
+
+        // 计算属性 - 邮箱验证
+        const emailValidation = computed(() => validateEmail(form.email));
+        const updateEmailValidation = computed(() => validateEmail(update.email));
+
+        // 计算属性 - 表单验证
+        const isFormValid = computed(() => {
+          return form.name &&
+            form.email &&
+            emailValidation.value.isValid &&
+            form.age &&
+            form.age > 0;
+        });
+
+        const isUpdateFormValid = computed(() => {
+          // 完整更新现在也允许部分填写，只要有ID和至少一个有效字段即可
+          if (!update.id) return false;
+
+          const hasValidData = update.name ||
+            (update.email && updateEmailValidation.value.isValid) ||
+            (update.age && update.age > 0);
+
+          return hasValidData;
+        });
+
+        // 检查 UnoCSS 是否准备好
+        const checkUnoReady = () => {
+          return new Promise((resolve) => {
+            let checkCount = 0;
+            const maxChecks = 50; // 最多检查5秒
+
+            const checkInterval = setInterval(() => {
+              checkCount++;
+
+              // 检查多个条件来确保 UnoCSS 已经完全加载
+              const hasRuntime = window.__unocss_runtime;
+              const hasStyles = document.querySelector('style[data-unocss]') ||
+                document.querySelector('link[href*="unocss"]') ||
+                document.querySelector('style').textContent.includes('bg-gray-50');
+
+              if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                // 设置 app 的 class 来显示内容
+                document.getElementById('app').className = 'uno-ready';
+                resolve();
+              }
+            }, 100);
+          });
+        };
+
         // 初始化 store
-        async function initStore() {
-            try {
-                store = await createStore({
-                    users: [
-                        { id: 1, name: 'Alice', email: 'alice@example.com', age: 25 },
-                        { id: 2, name: 'Bob', email: 'bob@example.com', age: 30 },
-                        { id: 3, name: 'Charlie', email: 'charlie@example.com', age: 35 }
-                    ]
-                });
-                
-                log('Store 初始化成功');
-                loadAllUsers();
-            } catch (error) {
-                log('Store 初始化失败: ' + error.message, 'error');
-            }
-        }
+        const initStore = async () => {
+          try {
+            // 等待 UnoCSS 准备就绪
+            loadingMessage.value = '正在加载样式资源...';
+            await checkUnoReady();
+            isUnoReady.value = true;
+
+            loadingMessage.value = '正在初始化数据存储...';
+
+            store.value = await JsLiteRest.create({
+              users: [
+                { id: 'A1B2C3D4', name: 'Alice', email: 'alice@example.com', age: 25 },
+                { id: 'E5F6G7H8', name: 'Bob', email: 'bob@example.com', age: 30 },
+                { id: 'I9J0K1L2', name: 'Charlie', email: 'charlie@example.com', age: 35 }
+              ]
+            });
+
+            log('Store 初始化成功');
+
+            loadingMessage.value = '正在加载用户数据...';
+            await loadAllUsers();
+
+            // 初始化完成，隐藏加载状态
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 500); // 延迟500ms让用户看到"加载完成"的状态
+
+          } catch (error) {
+            log('Store 初始化失败: ' + error.message, 'error');
+            loadingMessage.value = '初始化失败，请刷新页面重试';
+            // 即使失败也要隐藏加载状态
+            setTimeout(() => {
+              isLoading.value = false;
+            }, 2000);
+          }
+        };
 
         // 日志记录
-        function log(message, type = 'info') {
-            const logElement = document.getElementById('operationLog');
-            const timestamp = new Date().toLocaleTimeString();
-            const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600';
-            logElement.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
-            logElement.scrollTop = logElement.scrollHeight;
-        }
+        const log = (message, type = 'info') => {
+          const timestamp = new Date().toLocaleTimeString();
+          const colorClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600';
+          logs.value.push({
+            timestamp,
+            message,
+            class: colorClass
+          });
+        };
 
         // 清空日志
-        function clearLog() {
-            document.getElementById('operationLog').innerHTML = '';
-        }
-
-        // 显示用户列表
-        function displayUsers(users) {
-            const userList = document.getElementById('userList');
-            const userCount = document.getElementById('userCount');
-            
-            userCount.textContent = `共 ${users.length} 个用户`;
-            
-            if (users.length === 0) {
-                userList.innerHTML = '<div class="text-gray-500 text-center py-4">暂无用户数据</div>';
-                return;
-            }
-            
-            userList.innerHTML = users.map(user => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-semibold text-gray-800">ID: ${user.id} - ${user.name}</h3>
-                            <p class="text-gray-600">${user.email}</p>
-                            <p class="text-sm text-gray-500">年龄: ${user.age}</p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button onclick="fillUpdateForm(${user.id}, '${user.name}', '${user.email}')" 
-                                    class="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
-                            <button onclick="deleteUserById(${user.id})" 
-                                    class="text-red-600 hover:text-red-800 text-sm">删除</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+        const clearLog = () => {
+          logs.value = [];
+        };
 
         // 加载所有用户
-        async function loadAllUsers() {
-            try {
-                const users = await store.get('users');
-                displayUsers(users);
-                log(`获取所有用户成功，共 ${users.length} 个用户`, 'success');
-            } catch (error) {
-                log('获取用户失败: ' + error.message, 'error');
-            }
-        }
+        const loadAllUsers = async () => {
+          try {
+            const result = await store.value.get('users');
+            users.value = result;
+            log(`获取所有用户成功，共 ${result.length} 个用户`, 'success');
+          } catch (error) {
+            log('获取用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 添加用户
-        async function addUser() {
-            const name = document.getElementById('userName').value.trim();
-            const email = document.getElementById('userEmail').value.trim();
-            const age = parseInt(document.getElementById('userAge').value);
-            
-            if (!name || !email || !age) {
-                log('请填写完整的用户信息', 'error');
-                return;
-            }
-            
-            try {
-                const newUser = await store.post('users', { name, email, age });
-                log(`添加用户成功: ${newUser.name} (ID: ${newUser.id})`, 'success');
-                
-                // 清空表单
-                document.getElementById('userName').value = '';
-                document.getElementById('userEmail').value = '';
-                document.getElementById('userAge').value = '';
-                
-                loadAllUsers();
-            } catch (error) {
-                log('添加用户失败: ' + error.message, 'error');
-            }
-        }
+        const addUser = async () => {
+          if (!isFormValid.value) {
+            log('请填写完整且有效的用户信息', 'error');
+            return;
+          }
+
+          try {
+            const newUser = await store.value.post('users', {
+              name: form.name,
+              email: form.email,
+              age: form.age
+            });
+            log(`添加用户成功: ${newUser.name} (ID: ${newUser.id})`, 'success');
+
+            // 清空表单
+            form.name = '';
+            form.email = '';
+            form.age = null;
+
+            await loadAllUsers();
+          } catch (error) {
+            log('添加用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 搜索用户
-        async function searchUsers() {
-            const searchName = document.getElementById('searchName').value.trim();
-            const minAge = parseInt(document.getElementById('searchMinAge').value);
-            
-            try {
-                let query = {};
-                if (searchName) {
-                    query.name_like = searchName;
-                }
-                if (minAge) {
-                    query.age_gte = minAge;
-                }
-                
-                const users = await store.get('users', query);
-                displayUsers(users);
-                log(`搜索用户成功，找到 ${users.length} 个匹配用户`, 'success');
-            } catch (error) {
-                log('搜索用户失败: ' + error.message, 'error');
+        const searchUsers = async () => {
+          try {
+            let query = {};
+            if (search.name) {
+              query.name_like = search.name;
             }
-        }
+            if (search.minAge) {
+              query.age_gte = search.minAge;
+            }
+
+            const result = await store.value.get('users', query);
+            users.value = result;
+            log(`搜索用户成功，找到 ${result.length} 个匹配用户`, 'success');
+          } catch (error) {
+            log('搜索用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 更新用户 (PUT)
-        async function updateUser() {
-            const id = parseInt(document.getElementById('updateId').value);
-            const name = document.getElementById('updateName').value.trim();
-            const email = document.getElementById('updateEmail').value.trim();
-            
-            if (!id || !name || !email) {
-                log('请填写完整的更新信息', 'error');
-                return;
+        const updateUser = async () => {
+          if (!update.id) {
+            log('请选择要更新的用户', 'error');
+            return;
+          }
+
+          // 构建更新数据，只包含填写的字段
+          const updateData = {};
+          if (update.name) updateData.name = update.name;
+          if (update.email) {
+            if (!updateEmailValidation.value.isValid) {
+              log('请输入有效的邮箱地址', 'error');
+              return;
             }
-            
-            try {
-                const updatedUser = await store.put(`users/${id}`, { name, email, age: 0 });
-                if (updatedUser) {
-                    log(`完整更新用户成功: ${updatedUser.name} (ID: ${updatedUser.id})`, 'success');
-                    loadAllUsers();
-                } else {
-                    log(`用户 ID ${id} 不存在`, 'error');
-                }
-            } catch (error) {
-                log('更新用户失败: ' + error.message, 'error');
+            updateData.email = update.email;
+          }
+          if (update.age && update.age > 0) updateData.age = update.age;
+
+          if (Object.keys(updateData).length === 0) {
+            log('请至少填写一个要更新的字段', 'error');
+            return;
+          }
+
+          try {
+            const updatedUser = await store.value.put(`users/${update.id}`, updateData);
+            if (updatedUser) {
+              log(`完整更新用户成功: ${updatedUser.name} (ID: ${updatedUser.id})`, 'success');
+              await loadAllUsers();
+            } else {
+              log(`用户 ID ${update.id} 不存在`, 'error');
             }
-        }
+          } catch (error) {
+            log('更新用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 部分更新用户 (PATCH)
-        async function patchUser() {
-            const id = parseInt(document.getElementById('updateId').value);
-            const name = document.getElementById('updateName').value.trim();
-            const email = document.getElementById('updateEmail').value.trim();
-            
-            if (!id) {
-                log('请输入用户ID', 'error');
-                return;
+        const patchUser = async () => {
+          if (!update.id) {
+            log('请输入用户ID', 'error');
+            return;
+          }
+
+          const updateData = {};
+          if (update.name) updateData.name = update.name;
+          if (update.email) {
+            if (!updateEmailValidation.value.isValid) {
+              log('请输入有效的邮箱地址', 'error');
+              return;
             }
-            
-            const updateData = {};
-            if (name) updateData.name = name;
-            if (email) updateData.email = email;
-            
-            if (Object.keys(updateData).length === 0) {
-                log('请至少填写一个要更新的字段', 'error');
-                return;
+            updateData.email = update.email;
+          }
+          if (update.age) updateData.age = update.age;
+
+          if (Object.keys(updateData).length === 0) {
+            log('请至少填写一个要更新的字段', 'error');
+            return;
+          }
+
+          try {
+            const updatedUser = await store.value.patch(`users/${update.id}`, updateData);
+            if (updatedUser) {
+              log(`部分更新用户成功: ${updatedUser.name} (ID: ${updatedUser.id})`, 'success');
+              await loadAllUsers();
+            } else {
+              log(`用户 ID ${update.id} 不存在`, 'error');
             }
-            
-            try {
-                const updatedUser = await store.patch(`users/${id}`, updateData);
-                if (updatedUser) {
-                    log(`部分更新用户成功: ${updatedUser.name} (ID: ${updatedUser.id})`, 'success');
-                    loadAllUsers();
-                } else {
-                    log(`用户 ID ${id} 不存在`, 'error');
-                }
-            } catch (error) {
-                log('部分更新用户失败: ' + error.message, 'error');
-            }
-        }
+          } catch (error) {
+            log('部分更新用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 删除用户
-        async function deleteUser() {
-            const id = parseInt(document.getElementById('deleteId').value);
-            
-            if (!id) {
-                log('请输入用户ID', 'error');
-                return;
+        const deleteUser = async () => {
+          if (!deleteId.value) {
+            log('请选择要删除的用户', 'error');
+            return;
+          }
+
+          const selectedUser = users.value.find(user => user.id === deleteId.value);
+          const userName = selectedUser ? selectedUser.name : deleteId.value;
+
+          if (!confirm(`确定要删除用户 "${userName}" (ID: ${deleteId.value}) 吗？`)) {
+            return;
+          }
+
+          try {
+            const result = await store.value.delete(`users/${deleteId.value}`);
+            if (result) {
+              log(`删除用户成功: ${userName} (ID: ${deleteId.value})`, 'success');
+              deleteId.value = '';
+              await loadAllUsers();
+            } else {
+              log(`用户 ID ${deleteId.value} 不存在`, 'error');
             }
-            
-            try {
-                const result = await store.delete(`users/${id}`);
-                if (result) {
-                    log(`删除用户成功 (ID: ${id})`, 'success');
-                    document.getElementById('deleteId').value = '';
-                    loadAllUsers();
-                } else {
-                    log(`用户 ID ${id} 不存在`, 'error');
-                }
-            } catch (error) {
-                log('删除用户失败: ' + error.message, 'error');
-            }
-        }
+          } catch (error) {
+            log('删除用户失败: ' + error.message, 'error');
+          }
+        };
 
         // 通过ID删除用户（从列表中调用）
-        async function deleteUserById(id) {
-            if (confirm(`确定要删除用户 ID ${id} 吗？`)) {
-                try {
-                    await store.delete(`users/${id}`);
-                    log(`删除用户成功 (ID: ${id})`, 'success');
-                    loadAllUsers();
-                } catch (error) {
-                    log('删除用户失败: ' + error.message, 'error');
-                }
+        const deleteUserById = async (id) => {
+          if (confirm(`确定要删除用户 ID ${id} 吗？`)) {
+            try {
+              await store.value.delete(`users/${id}`);
+              log(`删除用户成功 (ID: ${id})`, 'success');
+              await loadAllUsers();
+            } catch (error) {
+              log('删除用户失败: ' + error.message, 'error');
             }
-        }
+          }
+        };
 
         // 填充更新表单
-        function fillUpdateForm(id, name, email) {
-            document.getElementById('updateId').value = id;
-            document.getElementById('updateName').value = name;
-            document.getElementById('updateEmail').value = email;
-        }
+        const fillUpdateForm = (user) => {
+          update.id = user.id;
+          update.name = user.name;
+          update.email = user.email;
+          update.age = user.age;
+        };
 
-        // 页面加载时初始化
-        window.addEventListener('load', initStore);
-    </script>
+        // 组件挂载时初始化
+        onMounted(() => {
+          initStore();
+        });
+
+        return {
+          users,
+          logs,
+          form,
+          search,
+          update,
+          deleteId,
+          isLoading,
+          loadingMessage,
+          isUnoReady,
+          emailValidation,
+          updateEmailValidation,
+          isFormValid,
+          isUpdateFormValid,
+          loadAllUsers,
+          addUser,
+          searchUsers,
+          updateUser,
+          patchUser,
+          deleteUser,
+          deleteUserById,
+          fillUpdateForm,
+          clearLog
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
+
 </html>
