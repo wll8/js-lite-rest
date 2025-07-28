@@ -658,12 +658,13 @@ export function testMain(JsLiteRest, opt = {}) {
         { title: 'a' },
         { title: 'b' },
         { id: 99, title: 'should fail' },
+        ...[...new Array(1000)].map((item, index) => ({index})),
       ];
       const err = await store.post('posts', arr).catch(err => err)
       expect(err.code).to.equal(303);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
-      expect(err.data.length).to.equal(3);
+      expect(err.data.length).to.equal(arr.length);
       expect(typeof err.data[0].id).to.equal('string');
       expect(typeof err.data[1].id).to.equal('string');
       expect(err.data[2]).to.equal(null);
@@ -672,7 +673,7 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(err.message[1]).to.equal(null);
       expect(err.message[2]).to.include('不能指定 id');
       const all = await store.get('posts');
-      expect(all.length).to.equal(2);
+      expect(all.length).to.equal(arr.length - 1);
     });
     it('put /posts 批量全量修改', async () => {
       const store = await JsLiteRest.create({

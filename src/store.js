@@ -1,45 +1,22 @@
 
-/**
- * 将10进制（大于0）转换为35进制
- * @param {number} decimal - 10进制数字（必须大于0）
- * @returns {string} - 转换后的35进制字符串
- */
-function decimalToBase35(decimal) {
-  // 检查输入是否有效
-  if (decimal <= 0) {
-    throw new Error("输入的数字必须大于0");
-  }
-
-  // 定义35进制字符集
-  const base35Chars = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const size = base35Chars.length;
-  let base35Str = '';
-  let num = decimal;
-
-  // 循环将十进制数字转换为35进制
-  while (num > 0) {
-    const remainder = (num - 1) % size; // 调整为从1开始
-    base35Str = base35Chars[remainder] + base35Str;
-    num = Math.floor((num - 1) / size);
-  }
-
-  return base35Str;
-}
-
 function genId() {
-  return getTimestamp().map(decimalToBase35).join(``)
+  const currentId = getTimestampPlusId();
+  return currentId.toString(36).toUpperCase();
 }
 
-function getTimestamp(start = +new Date(2025, 4, 5)) {
-  const time = Date.now() - start
-  const previousTimestamp = globalThis[`previousTimestamp_${start}`]
-  if(time === previousTimestamp) {
-    globalThis[`previousTimestamp_${start}_next`]++
-    return [time, globalThis[`previousTimestamp_${start}_next`] % 35]
+function getTimestampPlusId(start = +new Date(2025, 4, 5)) {
+  const currentTime = Date.now() - start;
+  const lastId = globalThis[`lastId_${start}`];
+  
+  if (lastId === undefined) {
+    // 首次调用，直接使用时间戳
+    globalThis[`lastId_${start}`] = currentTime;
+    return currentTime;
   } else {
-    globalThis[`previousTimestamp_${start}`] = time
-    globalThis[`previousTimestamp_${start}_next`] = 1
-    return [time, 1]
+    // 确保新ID既不小于当前时间戳，也大于上一个ID
+    const nextId = Math.max(currentTime, lastId + 1);
+    globalThis[`lastId_${start}`] = nextId;
+    return nextId;
   }
 }
 
