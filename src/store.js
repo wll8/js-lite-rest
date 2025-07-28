@@ -403,6 +403,10 @@ export class JsonAdapter {
             return 0;
           });
         }
+        
+        // 检查是否需要分页
+        const hasPagination = _page !== undefined || _limit !== undefined;
+        
         // 截取
         if (_start !== undefined || _end !== undefined) {
           let start = _start !== undefined ? parseInt(_start) : 0;
@@ -414,12 +418,20 @@ export class JsonAdapter {
           } else {
             filteredData = filteredData.slice(start, end);
           }
-        } else if (_page || _limit) {
+        } else if (hasPagination) {
+          // 分页处理：设置默认值
           const page = parseInt(_page) || 1;
           const limit = parseInt(_limit) || 10;
+          const totalCount = filteredData.length;
           const start = (page - 1) * limit;
           const end = start + limit;
-          filteredData = filteredData.slice(start, end);
+          const paginatedData = filteredData.slice(start, end);
+          
+          // 返回分页格式的数据，继续正常的处理流程
+          filteredData = {
+            count: totalCount,
+            list: paginatedData
+          };
         }
       }
       // 还原单对象
