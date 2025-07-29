@@ -2,9 +2,12 @@
 
 [![npm version](https://badge.fury.io/js/js-lite-rest.svg)](https://badge.fury.io/js/js-lite-rest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/wll8/js-lite-rest/workflows/CI/badge.svg)](https://github.com/wll8/js-lite-rest/actions)
 
 纯前端 RESTful 风格增删改查库，适用于单机应用和原型开发。无需后端服务器，即可实现完整的数据 CRUD 操作。
+
+**📚 [文档地址](https://wll8.github.io/js-lite-rest/) | 🎮 [在线示例](https://wll8.github.io/js-lite-rest/html-demo/)**
+
+> [English Documentation](./README.en.md)
 
 ## ✨ 特性
 

@@ -11,7 +11,7 @@ hero:
       link: /api/
     - theme: alt
       text: 在线演示
-      link: /public/html-demo/
+      link: https://wll8.github.io/js-lite-rest/html-demo/
     - theme: alt
       text: GitHub
       link: https://github.com/wll8/js-lite-rest
@@ -326,7 +326,7 @@ const memoryStore = await JsLiteRest.create(initialData, {
   </p>
   <div class="flex justify-center space-x-4 mt-4">
     <a href="/api/" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">查看文档</a>
-    <a href="https://wll8.github.io/js-lite-rest/html-demo/" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors">在线示例</a>
+    <a href="https://wll8.github.io/js-lite-rest/html-demo/" target="_blank" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors">在线示例</a>
     <a href="https://github.com/wll8/js-lite-rest" class="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors">GitHub</a>
   </div>
 </div>

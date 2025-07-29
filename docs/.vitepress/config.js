@@ -20,7 +20,7 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: 'API 文档', link: '/api/' },
-      { text: '示例', link: '/https://wll8.github.io/js-lite-rest/demo/' },
+      { text: '示例', link: 'https://wll8.github.io/js-lite-rest/html-demo/' },
       { text: '测试', link: 'https://wll8.github.io/js-lite-rest/test-results/mochawesome-results.html' },
       {
         text: '更多',
