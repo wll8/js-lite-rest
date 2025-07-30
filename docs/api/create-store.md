@@ -55,8 +55,8 @@ const store = await JsLiteRest.create('my-app-data');
 ```javascript
 const store = await JsLiteRest.create({}, {
   idKeySuffix: 'Id',
-  name: 'custom-path',  // 修正：使用 name 而不是 savePath
-  overwrite: false,     // 是否覆盖现有数据
+  savePath: 'custom-path',  // 数据存储路径
+  overwrite: false,         // 是否覆盖现有数据
   adapter: customAdapter
 });
 ```
@@ -76,22 +76,22 @@ const store = await JsLiteRest.create({}, {
 });
 ```
 
-### name
+### savePath
 
 **类型**: `string`  
 **默认值**: Node.js 中为 `'js-lite-rest.json'`，浏览器中为 `'js-lite-rest'`
 
-数据存储名称。在 Node.js 中作为文件路径，在浏览器中作为存储键名。
+数据存储路径。在 Node.js 中作为文件路径，在浏览器中作为存储键名。
 
 ```javascript
 // Node.js 环境
 const store = await JsLiteRest.create({}, {
-  name: './data/my-data.json'
+  savePath: './data/my-data.json'
 });
 
 // 浏览器环境
 const store = await JsLiteRest.create({}, {
-  name: 'my-app-storage-key'
+  savePath: 'my-app-storage-key'
 });
 ```
 
@@ -151,7 +151,7 @@ const store = await JsLiteRest.create({
 
 // 使用自定义文件路径
 const store = await JsLiteRest.create({}, {
-  name: './data/users.json'
+  savePath: './data/users.json'
 });
 
 // 从现有文件加载
@@ -168,7 +168,7 @@ const store = await JsLiteRest.create();
 
 // 使用自定义存储键名
 const store = await JsLiteRest.create({}, {
-  name: 'my-app-data'
+  savePath: 'my-app-data'
 });
 
 // 带初始数据

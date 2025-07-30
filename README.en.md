@@ -3,7 +3,10 @@
 [![npm version](https://badge.fury.io/js/js-lite-rest.svg)](https://badge.fury.io/js/js-lite-rest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight frontend RESTful CRUD library for standalone applications and prototype development. Complete data CRUD operations without backend server.
+A lightweight frontend RESTful CRUD libra// Use custom adapter
+const store = await JsLiteRest.create(null, {
+  adapter: new CustomAdapter({ /* config */ })
+});or standalone applications and prototype development. Complete data CRUD operations without backend server.
 
 **📚 [Documentation](https://wll8.github.io/js-lite-rest/) | 🎮 [Live Demo](https://wll8.github.io/js-lite-rest/html-demo/)**
 
@@ -39,7 +42,7 @@ pnpm add js-lite-rest
 ```html
 <!-- ES Module -->
 <script type="module">
-  import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
 </script>
 
 <!-- UMD (Global Variable) -->
@@ -51,10 +54,10 @@ pnpm add js-lite-rest
 ### Node.js Environment
 
 ```js
-import createStore from 'js-lite-rest';
+import JsLiteRest from 'js-lite-rest';
 
 // Create store instance, data will be saved to file
-const store = await createStore({
+const store = await JsLiteRest.create({
   books: [
     { id: 1, title: 'JavaScript: The Definitive Guide', author: 'David Flanagan' },
     { id: 2, title: 'Node.js in Action', author: 'Mike Cantelon' }
@@ -91,10 +94,10 @@ await store.delete('books/2');
 <head>
   <title>js-lite-rest Example</title>
   <script type="module">
-    import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+    import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
 
     // Use localStorage storage in browser
-    const store = await createStore();
+    const store = await JsLiteRest.create();
 
     // Add user data
     await store.post('users', { name: 'Alice', email: 'alice@example.com' });
@@ -118,7 +121,7 @@ await store.delete('books/2');
 
 ## 📖 API Documentation
 
-### createStore(data?, options?)
+### JsLiteRest.create(data?, options?)
 
 Create a new store instance.
 
@@ -206,7 +209,7 @@ await store.patch('users/1', { name: 'Alice Johnson' });
 await store.delete('users/1');
 
 // Batch delete
-await store.delete('users', { id: [1, 2, 3] });
+await store.delete('users', ['user1', 'user2', 'user3']);
 ```
 
 ## 🔧 Advanced Usage
@@ -216,7 +219,7 @@ await store.delete('users', { id: [1, 2, 3] });
 Use middleware to execute custom logic before and after requests:
 
 ```js
-const store = await createStore();
+const store = await JsLiteRest.create();
 
 // Add logging middleware
 store.use(async (args, next, opt) => {
@@ -264,7 +267,7 @@ class CustomAdapter {
 }
 
 // Use custom adapter
-const store = await createStore(null, {
+const store = await JsLiteRest.create(null, {
   adapter: new CustomAdapter({ /* configuration */ })
 });
 ```
@@ -274,7 +277,7 @@ const store = await createStore(null, {
 Supports nested resources and relational queries:
 
 ```js
-const store = await createStore({
+const store = await JsLiteRest.create({
   posts: [
     { id: 1, title: 'First Article', authorId: 1 },
     { id: 2, title: 'Second Article', authorId: 2 }

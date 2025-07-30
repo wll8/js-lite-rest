@@ -172,15 +172,6 @@ if (deleted) {
 ```javascript
 // 按 ID 数组批量删除
 await store.delete('users', ['user1', 'user2', 'user3']);
-
-// 按条件批量删除
-await store.delete('posts', { status: 'draft' });
-
-// 使用查询对象删除
-await store.delete('users', { 
-  status: 'inactive',
-  lastLogin_lt: '2023-01-01'
-});
 ```
 
 ## 嵌套资源操作

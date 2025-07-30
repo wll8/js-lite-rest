@@ -39,7 +39,7 @@ pnpm add js-lite-rest
 ```html
 <!-- ES Module -->
 <script type="module">
-  import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
 </script>
 
 <!-- UMD (全局变量) -->
@@ -51,10 +51,10 @@ pnpm add js-lite-rest
 ### Node.js 环境
 
 ```js
-import createStore from 'js-lite-rest';
+import JsLiteRest from 'js-lite-rest';
 
 // 创建 store 实例，数据将保存到文件
-const store = await createStore({
+const store = await JsLiteRest.create({
   books: [
     { id: 1, title: 'JavaScript 权威指南', author: 'David Flanagan' },
     { id: 2, title: 'Node.js 实战', author: 'Mike Cantelon' }
@@ -91,10 +91,10 @@ await store.delete('books/2');
 <head>
   <title>js-lite-rest 示例</title>
   <script type="module">
-    import createStore from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+    import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
 
     // 在浏览器中使用 localStorage 存储
-    const store = await createStore();
+    const store = await JsLiteRest.create();
 
     // 添加用户数据
     await store.post('users', { name: 'Alice', email: 'alice@example.com' });
@@ -119,7 +119,7 @@ await store.delete('books/2');
 
 ## 📖 API 文档
 
-### createStore(data?, options?)
+### JsLiteRest.create(data?, options?)
 
 创建一个新的 store 实例。
 
@@ -202,12 +202,12 @@ await store.patch('users/1', { name: 'Alice Johnson' });
 
 #### DELETE 操作
 
-```js
+```javascript
 // 删除单条记录
 await store.delete('users/1');
 
-// 批量删除
-await store.delete('users', { id: [1, 2, 3] });
+// 批量删除  
+await store.delete('users', ['user1', 'user2', 'user3']);
 ```
 
 ## 🔧 高级用法
@@ -217,7 +217,7 @@ await store.delete('users', { id: [1, 2, 3] });
 使用中间件可以在请求前后执行自定义逻辑：
 
 ```js
-const store = await createStore();
+const store = await JsLiteRest.create();
 
 // 添加日志中间件
 store.use(async (args, next, opt) => {
@@ -265,7 +265,7 @@ class CustomAdapter {
 }
 
 // 使用自定义适配器
-const store = await createStore(null, {
+const store = await JsLiteRest.create(null, {
   adapter: new CustomAdapter({ /* 配置 */ })
 });
 ```
@@ -275,7 +275,7 @@ const store = await createStore(null, {
 支持嵌套资源和关联查询：
 
 ```js
-const store = await createStore({
+const store = await JsLiteRest.create({
   posts: [
     { id: 1, title: '第一篇文章', authorId: 1 },
     { id: 2, title: '第二篇文章', authorId: 2 }

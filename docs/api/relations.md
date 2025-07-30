@@ -209,7 +209,7 @@ const comments = await store.get('comments', {
 js-lite-rest 使用 `idKeySuffix` 配置来确定关联字段：
 
 ```javascript
-const store = await createStore(data, {
+const store = await JsLiteRest.create(data, {
   idKeySuffix: 'Id' // 默认值
 });
 
@@ -223,7 +223,7 @@ const store = await createStore(data, {
 
 ```javascript
 // 自定义 ID 后缀
-const store = await createStore(data, {
+const store = await JsLiteRest.create(data, {
   idKeySuffix: '_id'
 });
 

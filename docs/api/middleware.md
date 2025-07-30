@@ -32,7 +32,7 @@ async function middleware(args, next, opt) {
 ### 使用 use() 方法
 
 ```javascript
-const store = await createStore();
+const store = await JsLiteRest.create();
 
 // 添加日志中间件
 store.use(async (args, next) => {

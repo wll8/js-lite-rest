@@ -221,29 +221,6 @@ const results = await store.get('posts', {
 });
 ```
 
-## 字段选择
-
-### 选择特定字段
-
-```javascript
-// 只返回指定字段
-const users = await store.get('users', {
-  _select: ['id', 'name', 'email']
-});
-
-// 结果只包含选择的字段
-// [{ id: 1, name: 'Alice', email: 'alice@example.com' }]
-```
-
-### 排除字段
-
-```javascript
-// 排除敏感字段
-const users = await store.get('users', {
-  _omit: ['password', 'token']
-});
-```
-
 ## 复杂查询示例
 
 ### 电商产品查询
@@ -268,10 +245,7 @@ const products = await store.get('products', {
   
   // 分页
   _page: 1,
-  _limit: 20,
-  
-  // 字段选择
-  _select: ['id', 'name', 'price', 'rating', 'image']
+  _limit: 20
 });
 ```
 
@@ -347,5 +321,3 @@ const posts = await store.get('posts', {
 | `_limit` | 每页数量 | `{ _limit: 10 }` |
 | `_start` | 起始位置 | `{ _start: 20 }` |
 | `_end` | 结束位置 | `{ _end: 30 }` |
-| `_select` | 选择字段 | `{ _select: ['id', 'name'] }` |
-| `_omit` | 排除字段 | `{ _omit: ['password'] }` |

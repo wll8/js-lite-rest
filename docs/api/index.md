@@ -13,10 +13,10 @@ npm install js-lite-rest
 ### 基本使用
 
 ```javascript
-import createStore from 'js-lite-rest';
+import JsLiteRest from 'js-lite-rest';
 
 // 创建 store 实例
-const store = await createStore({
+const store = await JsLiteRest.create({
   users: [
     { id: 1, name: 'Alice', email: 'alice@example.com' },
     { id: 2, name: 'Bob', email: 'bob@example.com' }
@@ -44,7 +44,7 @@ await store.delete('users/1');                    // 删除用户
     <script>
         async function main() {
             // 在浏览器中使用 localStorage 存储
-            const store = await createStore();
+            const store = await JsLiteRest.create();
             
             // 添加数据
             await store.post('users', { name: 'Alice', email: 'alice@example.com' });
@@ -68,13 +68,13 @@ Store 是 js-lite-rest 的核心，它提供了所有的数据操作方法。
 
 ```javascript
 // 使用初始数据创建 store
-const store = await createStore({
+const store = await JsLiteRest.create({
   users: [],
   posts: []
 });
 
 // 使用配置选项创建 store
-const store = await createStore({}, {
+const store = await JsLiteRest.create({}, {
   savePath: 'my-data.json',
   idKeySuffix: 'Id'
 });
@@ -118,9 +118,9 @@ await store.post('posts/1/comments', data); // 为文章 1 添加评论
 在 Node.js 中，数据默认保存到文件系统：
 
 ```javascript
-import createStore from 'js-lite-rest';
+import JsLiteRest from 'js-lite-rest';
 
-const store = await createStore({
+const store = await JsLiteRest.create({
   users: []
 }, {
   savePath: './data/users.json' // 自定义保存路径
@@ -133,10 +133,10 @@ const store = await createStore({
 
 ```javascript
 // 使用默认的 localStorage key
-const store = await createStore();
+const store = await JsLiteRest.create();
 
 // 使用自定义的 localStorage key
-const store = await createStore({}, {
+const store = await JsLiteRest.create({}, {
   savePath: 'my-app-data'
 });
 ```
@@ -150,7 +150,7 @@ js-lite-rest 支持多种数据持久化方式：
 默认情况下，所有数据修改操作都会自动持久化：
 
 ```javascript
-const store = await createStore();
+const store = await JsLiteRest.create();
 
 // 这些操作会自动保存到存储中
 await store.post('users', { name: 'Alice' });
@@ -163,7 +163,7 @@ await store.delete('users/1');
 你可以提供自定义的加载和保存函数：
 
 ```javascript
-const store = await createStore({}, {
+const store = await JsLiteRest.create({}, {
   async load(key) {
     // 自定义加载逻辑
     return JSON.parse(await someStorage.get(key));
@@ -216,7 +216,7 @@ const updates = [
 await store.put('users', updates);
 
 // 批量删除
-await store.delete('users', { id: [1, 2, 3] });
+await store.delete('users', ['user1', 'user2', 'user3']);
 ```
 
 ### 查询优化
@@ -226,9 +226,6 @@ await store.delete('users', { id: [1, 2, 3] });
 ```javascript
 // 使用分页
 await store.get('users', { _page: 1, _limit: 10 });
-
-// 使用字段选择
-await store.get('users', { _select: ['id', 'name'] });
 
 // 使用过滤条件
 await store.get('users', { status: 'active', age_gte: 18 });

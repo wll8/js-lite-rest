@@ -258,12 +258,12 @@ try {
 ```javascript
 // 浏览器环境 - 自动使用 IndexedDB/localStorage
 const browserStore = await JsLiteRest.create(initialData, {
-  name: 'my-app-data'  // 数据库名称
+  savePath: 'my-app-data'  // 数据库名称
 });
 
 // Node.js 环境 - 自动使用文件系统
 const nodeStore = await JsLiteRest.create(initialData, {
-  name: 'my-app-data.json'  // 文件路径
+  savePath: 'my-app-data.json'  // 文件路径
 });
 
 // 内存模式 - 不持久化
