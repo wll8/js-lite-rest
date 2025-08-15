@@ -431,7 +431,11 @@ createApp({
     
     const totalBooks = computed(() => books.value.length);
     
-    const totalGiftsInBooks = computed(() => gifts.value.length);
+    const totalGiftsInBooks = computed(() => {
+      return books.value.reduce((total, book) => {
+        return total + gifts.value.filter(gift => gift.bookId == book.id).length;
+      }, 0);
+    });
     
     // 方法
     const showToast = (message, type = 'success') => {
