@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>账本管理</title>
+  <!-- Mock.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mockjs@1.1.0/dist/mock.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- js-lite-rest -->
+  <script src="https://unpkg.com/js-lite-rest@0.0.2/dist/js-lite-rest.browser.umd.js"></script>
+  <style>
+    body {
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+    
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    /* Fix UnoCSS background color issues */
+    .bg-gray-100 {
+      background-color: #f3f4f6 !important;
+    }
+    
+    .bg-gray-200 {
+      background-color: #e5e7eb !important;
+    }
+    
+    .hover\:bg-gray-50:hover {
+      background-color: #f9fafb !important;
+    }
+    
+    .hover\:bg-gray-200:hover {
+      background-color: #e5e7eb !important;
+    }
+    
+    /* Override Tailwind button reset for gray backgrounds */
+    button.bg-gray-100,
+    [type='button'].bg-gray-100,
+    [type='reset'].bg-gray-100,
+    [type='submit'].bg-gray-100 {
+      background-color: #f3f4f6 !important;
+    }
+    
+    button.bg-gray-200,
+    [type='button'].bg-gray-200,
+    [type='reset'].bg-gray-200,
+    [type='submit'].bg-gray-200 {
+      background-color: #e5e7eb !important;
+    }
+    
+    button.bg-gray-100:hover,
+    [type='button'].bg-gray-100:hover {
+      background-color: #e5e7eb !important;
+    }
+    
+    /* Override Tailwind button reset for blue backgrounds */
+    button.bg-blue-600,
+    [type='button'].bg-blue-600,
+    [type='reset'].bg-blue-600,
+    [type='submit'].bg-blue-600 {
+      background-color: #2563eb !important;
+    }
+    
+    button.bg-blue-700,
+    [type='button'].bg-blue-700,
+    [type='reset'].bg-blue-700,
+    [type='submit'].bg-blue-700 {
+      background-color: #1d4ed8 !important;
+    }
+    
+    button.bg-blue-600:hover,
+    [type='button'].bg-blue-600:hover,
+    [type='submit'].bg-blue-600:hover {
+      background-color: #1d4ed8 !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 加载状态 -->
+  <div id="loading" class="loading">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-600">正在加载...</p>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- 头部 -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <div class="mx-auto px-4 py-3">
+        <h1 class="text-lg font-semibold text-gray-800">账本管理</h1>
+      </div>
+    </header>
+
+    <!-- 搜索栏 -->
+    <div class="mx-auto px-4 py-3 bg-white">
+      <div class="relative">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="搜索账本标题或日期..."
+          class="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          @input="debouncedSearch"
+        >
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="mx-auto px-4 py-2">
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div class="text-2xl font-bold text-green-600">{{ totalBooks }}</div>
+            <div class="text-sm text-gray-600">总账本</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-blue-600">{{ totalGiftsInBooks }}</div>
+            <div class="text-sm text-gray-600">总记录</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 账本列表 -->
+    <div class="mx-auto px-4 pb-20">
+      <div v-if="loading" class="text-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p class="text-gray-600">加载中...</p>
+      </div>
+      
+      <div v-else-if="paginatedBooks.length === 0" class="text-center py-8">
+        <div class="text-gray-400 mb-2">
+          <svg class="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+        </div>
+        <p class="text-gray-600">{{ searchQuery ? '没有找到相关账本' : '暂无账本' }}</p>
+      </div>
+      
+      <div v-else class="space-y-3">
+        <div 
+          v-for="book in paginatedBooks" 
+          :key="book.id"
+          class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+          @click="viewBookGifts(book.id)"
+        >
+          <div class="flex justify-between items-start mb-2">
+            <div class="flex-1">
+              <h3 class="font-semibold text-gray-800 mb-1">{{ book.title }}</h3>
+              <div class="text-sm text-gray-600 space-y-1">
+                <div class="flex items-center">
+                  <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>{{ formatDate(book.date) }}</span>
+                </div>
+                <div v-if="book.date && book.date.lunar_day" class="flex items-center">
+                  <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                  </svg>
+                  <span>{{ book.date.lunar_year }} {{ book.date.lunar_month }}{{ book.date.lunar_day }}</span>
+                </div>
+                <div class="flex items-center">
+                  <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                  </svg>
+                  <span>{{ getBookGiftCount(book.id) }} 条记录</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center text-green-600 font-semibold">
+              ¥{{ getBookTotalAmount(book.id) }}
+            </div>
+          </div>
+          <div class="flex justify-end space-x-2 mt-3" @click.stop>
+            <button 
+              @click="editBook(book)"
+              class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+            >
+              编辑
+            </button>
+            <button 
+              @click="deleteBook(book.id)"
+              class="px-3 py-1 text-sm bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分页 -->
+      <div v-if="totalPages > 1" class="mt-6 flex justify-center items-center space-x-2">
+        <button 
+          @click="currentPage--"
+          :disabled="currentPage <= 1"
+          class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+        >
+          上一页
+        </button>
+        <span class="px-3 py-2 text-sm text-gray-600">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        <button 
+          @click="currentPage++"
+          :disabled="currentPage >= totalPages"
+          class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+        >
+          下一页
+        </button>
+      </div>
+    </div>
+
+    <!-- 添加按钮 -->
+    <div class="fixed bottom-6 right-6">
+      <button 
+        @click="showForm = true; editingBook = null; resetForm()"
+        class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 表单弹窗 -->
+    <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center">
+      <div class="bg-white w-full rounded-t-2xl max-h-90vh overflow-y-auto">
+        <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">{{ editingBook ? '编辑账本' : '添加账本' }}</h2>
+            <button @click="showForm = false" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <form @submit.prevent="saveBook" class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">账本标题 *</label>
+            <input 
+              v-model="form.title"
+              type="text" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="请输入账本标题"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">日期 *</label>
+            <input 
+              v-model="form.date"
+              type="date" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">农历年份</label>
+            <input 
+              v-model="form.lunarYear"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="如：癸卯兔年（可选）"
+            >
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">农历月</label>
+              <input 
+                v-model="form.lunarMonth"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="如：十月"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">农历日</label>
+              <input 
+                v-model="form.lunarDay"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="如：初二"
+              >
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">节气</label>
+            <input 
+              v-model="form.lunarTerm"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="如：立冬（可选）"
+            >
+          </div>
+          
+          <div class="flex space-x-3 pt-4">
+            <button 
+              type="button"
+              @click="showForm = false"
+              class="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              取消
+            </button>
+            <button 
+              type="submit"
+              :disabled="saving"
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {{ saving ? '保存中...' : (editingBook ? '更新' : '添加') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div v-if="toast.show" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-60">
+      <div :class="['px-4 py-2 rounded-md text-white text-sm', toast.type === 'success' ? 'bg-green-500' : 'bg-red-500']">
+        {{ toast.message }}
+      </div>
+    </div>
+  </div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    // 状态管理
+    const store = ref(null);
+    const loading = ref(true);
+    const saving = ref(false);
+    const showForm = ref(false);
+    const editingBook = ref(null);
+    
+    // 数据
+    const books = ref([]);
+    const gifts = ref([]);
+    const searchQuery = ref('');
+    
+    // 分页
+    const currentPage = ref(1);
+    const pageSize = ref(10);
+    
+    // 表单
+    const form = ref({
+      title: '',
+      date: '',
+      lunarYear: '',
+      lunarMonth: '',
+      lunarDay: '',
+      lunarTerm: ''
+    });
+    
+    // Toast提示
+    const toast = ref({
+      show: false,
+      message: '',
+      type: 'success'
+    });
+    
+    // 计算属性
+    const filteredBooks = computed(() => {
+      if (!searchQuery.value.trim()) {
+        return books.value;
+      }
+      
+      const query = searchQuery.value.toLowerCase();
+      return books.value.filter(book => 
+        book.title.toLowerCase().includes(query) ||
+        book.date.value.includes(query) ||
+        (book.date.lunar_year && book.date.lunar_year.toLowerCase().includes(query))
+      );
+    });
+    
+    const totalPages = computed(() => {
+      return Math.ceil(filteredBooks.value.length / pageSize.value);
+    });
+    
+    const paginatedBooks = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value;
+      const end = start + pageSize.value;
+      return filteredBooks.value.slice(start, end);
+    });
+    
+    const totalBooks = computed(() => books.value.length);
+    
+    const totalGiftsInBooks = computed(() => gifts.value.length);
+    
+    // 方法
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type };
+      setTimeout(() => {
+        toast.value.show = false;
+      }, 3000);
+    };
+    
+    const checkUnoReady = () => {
+      return new Promise((resolve) => {
+        let checkCount = 0;
+        const maxChecks = 50;
+        
+        const checkInterval = setInterval(() => {
+          checkCount++;
+          const hasRuntime = window.__unocss_runtime;
+          const hasStyles = document.querySelector('style[data-unocss]') || 
+                           document.querySelector('style').textContent.includes('bg-white');
+          
+          if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+            document.getElementById('app').className = 'uno-ready';
+            document.getElementById('loading').style.display = 'none';
+            resolve();
+          }
+        }, 100);
+      });
+    };
+    
+    const generateMockData = () => {
+      // 生成账本数据
+      const books = Mock.mock({
+        'books|5-8': [{
+          'id|+1': 1,
+          'title': '@pick(["生日宴", "婚礼", "满月酒", "乔迁新居", "开业庆典", "升学宴", "退休庆典"])',
+          'userId': () => Mock.Random.string('lower', 28),
+          'date': () => {
+            const year = Mock.Random.integer(2020, 2024);
+            const month = Mock.Random.integer(1, 12);
+            const day = Mock.Random.integer(1, 28);
+            const lunarMonths = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '腊月'];
+            const lunarDays = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十', '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
+            const lunarYears = ['庚子鼠年', '辛丑牛年', '壬寅虎年', '癸卯兔年', '甲辰龙年'];
+            
+            return {
+              year,
+              month,
+              day,
+              value: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+              lunar_day: Mock.Random.pick(lunarDays),
+              lunar_month: Mock.Random.pick(lunarMonths),
+              lunar_year: Mock.Random.pick(lunarYears),
+              lunar_term: Mock.Random.boolean() ? Mock.Random.pick(['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']) : null
+            };
+          }
+        }]
+      }).books;
+
+      // 生成礼金数据
+      const gifts = [];
+      books.forEach(book => {
+        const giftCount = Mock.Random.integer(3, 15);
+        for (let i = 0; i < giftCount; i++) {
+          gifts.push({
+            id: Mock.Random.string('lower', 10),
+            friendName: Mock.Random.cname(),
+            money: Mock.Random.pick(['100', '200', '300', '500', '600', '800', '1000', '1200', '1500', '1600', '1800', '2000', '2888', '3000', '3600', '5000', '6666', '8888']),
+            remarks: Mock.Random.pick(['', '', '', Mock.Random.cword(2, 6)]), // 大部分为空，少部分有备注
+            userId: Mock.Random.string('lower', 28),
+            bookId: book.id.toString()
+          });
+        }
+      });
+
+      return { books, gifts };
+    };
+    
+    const initStore = async () => {
+      try {
+        await checkUnoReady();
+        
+        // 生成模拟数据
+        const initialData = generateMockData();
+        
+        // 使用 JsLiteRest.create 的初始化数据功能
+        // 这会自动处理数据合并：如果已有数据则保持，如果没有则使用初始数据
+        store.value = await JsLiteRest.create({
+          books: initialData.books || [],
+          gifts: initialData.gifts || []
+        }, {
+          savePath: 'gift-accounting-data',
+          overwrite: false // 不覆盖已有数据，只在首次使用时填充
+        });
+        
+        // 加载数据
+        await loadData();
+        
+      } catch (error) {
+        console.error('Failed to initialize store:', error);
+        showToast('初始化失败，请刷新页面重试', 'error');
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    const loadData = async () => {
+      try {
+        const [booksData, giftsData] = await Promise.all([
+          store.value.get('books').catch(() => []),
+          store.value.get('gifts').catch(() => [])
+        ]);
+        
+        // 强制更新响应式数据
+        books.value = Array.isArray(booksData) ? [...booksData] : [];
+        gifts.value = Array.isArray(giftsData) ? [...giftsData] : [];
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        showToast('数据加载失败', 'error');
+      }
+    };
+    
+    const formatDate = (dateObj) => {
+      if (!dateObj) return '';
+      if (dateObj.value) {
+        return dateObj.value;
+      }
+      return `${dateObj.year}-${String(dateObj.month).padStart(2, '0')}-${String(dateObj.day).padStart(2, '0')}`;
+    };
+    
+    const getBookGiftCount = (bookId) => {
+      return gifts.value.filter(gift => gift.bookId == bookId).length;
+    };
+    
+    const getBookTotalAmount = (bookId) => {
+      return gifts.value
+        .filter(gift => gift.bookId == bookId)
+        .reduce((sum, gift) => sum + parseFloat(gift.money || 0), 0)
+        .toFixed(2);
+    };
+    
+    const resetForm = () => {
+      form.value = {
+        title: '',
+        date: '',
+        lunarYear: '',
+        lunarMonth: '',
+        lunarDay: '',
+        lunarTerm: ''
+      };
+    };
+    
+    const editBook = (book) => {
+      editingBook.value = book;
+      const date = book.date || {};
+      form.value = {
+        title: book.title || '',
+        date: date.value || (date.year ? `${date.year}-${String(date.month || 1).padStart(2, '0')}-${String(date.day || 1).padStart(2, '0')}` : ''),
+        lunarYear: date.lunar_year || '',
+        lunarMonth: date.lunar_month || '',
+        lunarDay: date.lunar_day || '',
+        lunarTerm: date.lunar_term || ''
+      };
+      showForm.value = true;
+    };
+    
+    const saveBook = async () => {
+      if (saving.value) return;
+      
+      saving.value = true;
+      try {
+        const dateObj = new Date(form.value.date);
+        const bookData = {
+          title: form.value.title.trim(),
+          date: {
+            year: dateObj.getFullYear(),
+            month: dateObj.getMonth() + 1,
+            day: dateObj.getDate(),
+            value: form.value.date,
+            lunar_year: form.value.lunarYear.trim() || null,
+            lunar_month: form.value.lunarMonth.trim() || null,
+            lunar_day: form.value.lunarDay.trim() || null,
+            lunar_term: form.value.lunarTerm.trim() || null
+          }
+        };
+        
+        if (editingBook.value) {
+          // 更新
+          await store.value.put(`books/${editingBook.value.id}`, {
+            ...bookData,
+            id: editingBook.value.id
+          });
+          showToast('账本已更新');
+        } else {
+          // 新增
+          await store.value.post('books', bookData);
+          showToast('账本已添加');
+        }
+        
+        await loadData();
+        await nextTick(); // 确保DOM更新
+        showForm.value = false;
+        resetForm();
+        editingBook.value = null;
+        
+      } catch (error) {
+        console.error('Failed to save book:', error);
+        showToast('保存失败，请重试', 'error');
+      } finally {
+        saving.value = false;
+      }
+    };
+    
+    const deleteBook = async (id) => {
+      const giftCount = getBookGiftCount(id);
+      const confirmMessage = giftCount > 0 
+        ? `该账本下有 ${giftCount} 条礼金记录，删除账本不会删除记录。确定要删除这个账本吗？`
+        : '确定要删除这个账本吗？';
+        
+      if (!confirm(confirmMessage)) return;
+      
+      try {
+        await store.value.delete(`books/${id}`);
+        await loadData();
+        await nextTick(); // 确保DOM更新
+        showToast('账本已删除');
+      } catch (error) {
+        console.error('Failed to delete book:', error);
+        showToast('删除失败，请重试', 'error');
+      }
+    };
+    
+    const viewBookGifts = (bookId) => {
+      window.location.href = `./gift.html?bookId=${bookId}`;
+    };
+    
+    // 防抖搜索
+    let searchTimeout;
+    const debouncedSearch = () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        currentPage.value = 1;
+      }, 300);
+    };
+    
+    // 生命周期
+    onMounted(() => {
+      initStore();
+    });
+    
+    return {
+      // 状态
+      loading,
+      saving,
+      showForm,
+      editingBook,
+      books,
+      gifts,
+      searchQuery,
+      currentPage,
+      pageSize,
+      form,
+      toast,
+      
+      // 计算属性
+      filteredBooks,
+      totalPages,
+      paginatedBooks,
+      totalBooks,
+      totalGiftsInBooks,
+      
+      // 方法
+      loadData,
+      formatDate,
+      getBookGiftCount,
+      getBookTotalAmount,
+      resetForm,
+      editBook,
+      saveBook,
+      deleteBook,
+      viewBookGifts,
+      debouncedSearch,
+      showToast
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

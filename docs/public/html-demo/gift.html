@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>礼金记账</title>
+  <!-- Mock.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mockjs@1.1.0/dist/mock.js"></script>
+  <!-- UnoCSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.css">
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- js-lite-rest -->
+  <script src="https://unpkg.com/js-lite-rest@0.0.2/dist/js-lite-rest.browser.umd.js"></script>
+  <style>
+    body {
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+    
+    #app.uno-ready {
+      display: block;
+      opacity: 0;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    /* Fix UnoCSS background color issues */
+    .bg-gray-100 {
+      background-color: #f3f4f6 !important;
+    }
+    
+    .bg-gray-200 {
+      background-color: #e5e7eb !important;
+    }
+    
+    .hover\:bg-gray-50:hover {
+      background-color: #f9fafb !important;
+    }
+    
+    .hover\:bg-gray-200:hover {
+      background-color: #e5e7eb !important;
+    }
+    
+    /* Override Tailwind button reset for gray backgrounds */
+    button.bg-gray-100,
+    [type='button'].bg-gray-100,
+    [type='reset'].bg-gray-100,
+    [type='submit'].bg-gray-100 {
+      background-color: #f3f4f6 !important;
+    }
+    
+    button.bg-gray-200,
+    [type='button'].bg-gray-200,
+    [type='reset'].bg-gray-200,
+    [type='submit'].bg-gray-200 {
+      background-color: #e5e7eb !important;
+    }
+    
+    button.bg-gray-100:hover,
+    [type='button'].bg-gray-100:hover {
+      background-color: #e5e7eb !important;
+    }
+    
+    /* Override Tailwind button reset for blue backgrounds */
+    button.bg-blue-600,
+    [type='button'].bg-blue-600,
+    [type='reset'].bg-blue-600,
+    [type='submit'].bg-blue-600 {
+      background-color: #2563eb !important;
+    }
+    
+    button.bg-blue-700,
+    [type='button'].bg-blue-700,
+    [type='reset'].bg-blue-700,
+    [type='submit'].bg-blue-700 {
+      background-color: #1d4ed8 !important;
+    }
+    
+    button.bg-blue-600:hover,
+    [type='button'].bg-blue-600:hover,
+    [type='submit'].bg-blue-600:hover {
+      background-color: #1d4ed8 !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 加载状态 -->
+  <div id="loading" class="loading">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-600">正在加载...</p>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- 头部 -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <div class="mx-auto px-4 py-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <button 
+              @click="goBackToBooks"
+              class="mr-3 text-gray-600 hover:text-gray-800"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </button>
+            <div>
+              <h1 class="text-lg font-semibold text-gray-800">{{ currentBook ? currentBook.title : '礼金记账' }}</h1>
+              <p v-if="currentBook" class="text-xs text-gray-500">{{ formatBookDate(currentBook.date) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 搜索栏和排序 -->
+    <div class="mx-auto px-4 py-3 bg-white">
+      <div class="relative mb-3">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="搜索朋友姓名、备注或金额..."
+          class="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          @input="debouncedSearch"
+        >
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </div>
+      
+      <!-- 排序选项 -->
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-600">排序：</span>
+        <div class="flex space-x-2">
+          <button 
+            @click="setSortBy('money', 'desc')"
+            :class="[
+              'px-3 py-1 text-xs rounded-full border transition-colors',
+              sortBy === 'money' && sortOrder === 'desc' 
+                ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+            ]"
+          >
+            金额↓
+          </button>
+          <button 
+            @click="setSortBy('money', 'asc')"
+            :class="[
+              'px-3 py-1 text-xs rounded-full border transition-colors',
+              sortBy === 'money' && sortOrder === 'asc' 
+                ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+            ]"
+          >
+            金额↑
+          </button>
+          <button 
+            @click="setSortBy('', '')"
+            :class="[
+              'px-3 py-1 text-xs rounded-full border transition-colors',
+              sortBy === '' 
+                ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+            ]"
+          >
+            默认
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="mx-auto px-4 py-2">
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div class="text-2xl font-bold text-green-600">{{ totalGifts }}</div>
+            <div class="text-sm text-gray-600">总记录</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-blue-600">¥{{ totalAmount }}</div>
+            <div class="text-sm text-gray-600">总金额</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 礼金列表 -->
+    <div class="mx-auto px-4 pb-20">
+      <div v-if="loading" class="text-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p class="text-gray-600">加载中...</p>
+      </div>
+      
+      <div v-else-if="paginatedGifts.length === 0" class="text-center py-8">
+        <div class="text-gray-400 mb-2">
+          <svg class="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-8v2m4-2v2"></path>
+          </svg>
+        </div>
+        <p class="text-gray-600">{{ searchQuery ? '没有找到相关记录' : '暂无礼金记录' }}</p>
+      </div>
+      
+      <div v-else class="space-y-3">
+        <div 
+          v-for="gift in paginatedGifts" 
+          :key="gift.id"
+          class="bg-white rounded-lg p-4 shadow-sm border border-gray-200"
+        >
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-gray-800">{{ gift.friendName }}</h3>
+                <span class="text-lg font-bold text-red-600">¥{{ gift.money }}</span>
+              </div>
+              <div class="text-sm text-gray-600 mb-2">
+                <div v-if="gift.remarks">备注: {{ gift.remarks }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-2 mt-3">
+            <button 
+              @click="editGift(gift)"
+              class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+            >
+              编辑
+            </button>
+            <button 
+              @click="deleteGift(gift.id)"
+              class="px-3 py-1 text-sm bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 加载更多 -->
+      <div v-if="hasMoreData" class="mt-6 flex justify-center">
+        <button 
+          @click="loadMore"
+          :disabled="isLoadingMore"
+          class="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {{ isLoadingMore ? '加载中...' : '加载更多' }}
+        </button>
+      </div>
+      
+      <!-- 触底加载提示 -->
+      <div v-if="isLoadingMore && hasMoreData" class="mt-4 flex justify-center">
+        <div class="flex items-center text-gray-500 text-sm">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+          正在加载更多...
+        </div>
+      </div>
+      
+      <div v-else-if="!hasMoreData && paginatedGifts.length > 0" class="mt-6 text-center">
+        <p class="text-sm text-gray-500">已显示全部记录</p>
+      </div>
+    </div>
+
+    <!-- 添加按钮 -->
+    <div class="fixed bottom-6 right-6">
+      <button 
+        @click="showForm = true; editingGift = null; resetForm()"
+        class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 表单弹窗 -->
+    <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center">
+      <div class="bg-white w-full rounded-t-2xl max-h-90vh overflow-y-auto">
+        <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">{{ editingGift ? '编辑礼金' : '添加礼金' }}</h2>
+            <button @click="showForm = false" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <form @submit.prevent="saveGift" class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">朋友姓名 *</label>
+            <input 
+              v-model="form.friendName"
+              type="text" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="请输入朋友姓名"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">金额 *</label>
+            <input 
+              v-model="form.money"
+              type="number" 
+              required
+              min="0"
+              step="0.01"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="请输入金额"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">备注</label>
+            <input 
+              v-model="form.remarks"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="请输入备注（可选）"
+            >
+          </div>
+          
+          <div class="flex space-x-3 pt-4">
+            <button 
+              type="button"
+              @click="showForm = false"
+              class="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              取消
+            </button>
+            <button 
+              type="submit"
+              :disabled="saving"
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {{ saving ? '保存中...' : (editingGift ? '更新' : '添加') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div v-if="toast.show" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-60">
+      <div :class="['px-4 py-2 rounded-md text-white text-sm', toast.type === 'success' ? 'bg-green-500' : 'bg-red-500']">
+        {{ toast.message }}
+      </div>
+    </div>
+  </div>
+
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    // 状态管理
+    const store = ref(null);
+    const loading = ref(true);
+    const saving = ref(false);
+    const showForm = ref(false);
+    const editingGift = ref(null);
+    
+    // 数据
+    const gifts = ref([]);
+    const books = ref([]);
+    const currentBook = ref(null);
+    const currentBookId = ref(null);
+    const searchQuery = ref('');
+    
+    // 分页
+    const currentPage = ref(1);
+    const pageSize = ref(10);
+    const hasMore = ref(true);
+    const isLoadingMore = ref(false);
+    
+    // 排序
+    const sortBy = ref('');
+    const sortOrder = ref('desc');
+    
+    // 表单
+    const form = ref({
+      friendName: '',
+      money: '',
+      remarks: ''
+    });
+    
+    // Toast提示
+    const toast = ref({
+      show: false,
+      message: '',
+      type: 'success'
+    });
+    
+    // 计算属性
+    const filteredGifts = computed(() => {
+      // 首先过滤当前账本的记录
+      let bookGifts = gifts.value;
+      if (currentBookId.value) {
+        bookGifts = gifts.value.filter(gift => gift.bookId == currentBookId.value);
+      }
+      
+      // 搜索过滤
+      if (searchQuery.value.trim()) {
+        const query = searchQuery.value.toLowerCase();
+        bookGifts = bookGifts.filter(gift => 
+          gift.friendName.toLowerCase().includes(query) ||
+          gift.remarks.toLowerCase().includes(query) ||
+          gift.money.toString().includes(query)
+        );
+      }
+      
+      // 排序
+      if (sortBy.value === 'money') {
+        bookGifts = [...bookGifts].sort((a, b) => {
+          const aAmount = parseFloat(a.money || 0);
+          const bAmount = parseFloat(b.money || 0);
+          return sortOrder.value === 'desc' ? bAmount - aAmount : aAmount - bAmount;
+        });
+      }
+      
+      return bookGifts;
+    });
+    
+    const totalPages = computed(() => {
+      return Math.ceil(filteredGifts.value.length / pageSize.value);
+    });
+    
+    const paginatedGifts = computed(() => {
+      // 下拉加载模式：显示从第一页到当前页的所有数据
+      const end = currentPage.value * pageSize.value;
+      return filteredGifts.value.slice(0, end);
+    });
+    
+    // 检查是否还有更多数据
+    const hasMoreData = computed(() => {
+      return paginatedGifts.value.length < filteredGifts.value.length;
+    });
+    
+    const totalGifts = computed(() => filteredGifts.value.length);
+    
+    const totalAmount = computed(() => {
+      return filteredGifts.value.reduce((sum, gift) => sum + parseFloat(gift.money || 0), 0).toFixed(2);
+    });
+    
+    // 方法
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type };
+      setTimeout(() => {
+        toast.value.show = false;
+      }, 3000);
+    };
+    
+    const getUrlParams = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('bookId');
+    };
+    
+    const goBackToBooks = () => {
+      window.location.href = './books.html';
+    };
+    
+    const formatBookDate = (dateObj) => {
+      if (!dateObj) return '';
+      if (dateObj.value) {
+        return dateObj.value;
+      }
+      let dateStr = `${dateObj.year}-${String(dateObj.month).padStart(2, '0')}-${String(dateObj.day).padStart(2, '0')}`;
+      if (dateObj.lunar_day) {
+        dateStr += ` (${dateObj.lunar_year || ''} ${dateObj.lunar_month || ''}${dateObj.lunar_day || ''})`;
+      }
+      return dateStr;
+    };
+    
+    const checkUnoReady = () => {
+      return new Promise((resolve) => {
+        let checkCount = 0;
+        const maxChecks = 50;
+        
+        const checkInterval = setInterval(() => {
+          checkCount++;
+          const hasRuntime = window.__unocss_runtime;
+          const hasStyles = document.querySelector('style[data-unocss]') || 
+                           document.querySelector('style').textContent.includes('bg-white');
+          
+          if ((hasRuntime || hasStyles) || checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+            document.getElementById('app').className = 'uno-ready';
+            document.getElementById('loading').style.display = 'none';
+            resolve();
+          }
+        }, 100);
+      });
+    };
+    
+    const initStore = async () => {
+      try {
+        await checkUnoReady();
+        
+        // 获取 bookId 参数
+        currentBookId.value = getUrlParams();
+        
+        // 直接使用已有的数据存储，不需要初始化数据
+        store.value = await JsLiteRest.create({}, {
+          savePath: 'gift-accounting-data'
+        });
+        
+        // 加载数据
+        await loadData();
+        
+        // 如果没有指定 bookId，跳转到账本管理页面
+        if (!currentBookId.value) {
+          window.location.href = './books.html';
+          return;
+        }
+        
+        // 查找当前账本
+        const book = books.value.find(b => b.id == currentBookId.value);
+        if (!book) {
+          showToast('账本不存在，将跳转到账本管理页面', 'error');
+          setTimeout(() => {
+            window.location.href = './books.html';
+          }, 2000);
+          return;
+        }
+        
+        currentBook.value = book;
+        
+      } catch (error) {
+        console.error('Failed to initialize store:', error);
+        showToast('初始化失败，请刷新页面重试', 'error');
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    const loadData = async () => {
+      try {
+        const [giftsData, booksData] = await Promise.all([
+          store.value.get('gifts').catch(() => []),
+          store.value.get('books').catch(() => [])
+        ]);
+        
+        // 强制更新响应式数据
+        gifts.value = Array.isArray(giftsData) ? [...giftsData] : [];
+        books.value = Array.isArray(booksData) ? [...booksData] : [];
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        showToast('数据加载失败', 'error');
+      }
+    };
+    
+    const getBookTitle = (bookId) => {
+      if (!bookId) return '';
+      const book = books.value.find(b => b.id == bookId);
+      return book ? book.title : '';
+    };
+    
+    const resetForm = () => {
+      form.value = {
+        friendName: '',
+        money: '',
+        remarks: ''
+      };
+    };
+    
+    const editGift = (gift) => {
+      editingGift.value = gift;
+      form.value = {
+        friendName: gift.friendName,
+        money: gift.money.toString(),
+        remarks: gift.remarks || ''
+      };
+      showForm.value = true;
+    };
+    
+    const saveGift = async () => {
+      if (saving.value) return;
+      
+      saving.value = true;
+      try {
+        const giftData = {
+          friendName: form.value.friendName.trim(),
+          money: form.value.money,
+          remarks: form.value.remarks.trim(),
+          bookId: currentBookId.value
+        };
+        
+        if (editingGift.value) {
+          // 更新
+          await store.value.put(`gifts/${editingGift.value.id}`, {
+            ...giftData,
+            id: editingGift.value.id
+          });
+          showToast('礼金记录已更新');
+        } else {
+          // 新增
+          await store.value.post('gifts', giftData);
+          showToast('礼金记录已添加');
+        }
+        
+        await loadData();
+        await nextTick(); // 确保DOM更新
+        showForm.value = false;
+        resetForm();
+        editingGift.value = null;
+        
+      } catch (error) {
+        console.error('Failed to save gift:', error);
+        showToast('保存失败，请重试', 'error');
+      } finally {
+        saving.value = false;
+      }
+    };
+    
+    const deleteGift = async (id) => {
+      if (!confirm('确定要删除这条记录吗？')) return;
+      
+      try {
+        await store.value.delete(`gifts/${id}`);
+        await loadData();
+        await nextTick(); // 确保DOM更新
+        showToast('记录已删除');
+      } catch (error) {
+        console.error('Failed to delete gift:', error);
+        showToast('删除失败，请重试', 'error');
+      }
+    };
+    
+    // 排序方法
+    const setSortBy = (field, order) => {
+      sortBy.value = field;
+      sortOrder.value = order;
+      currentPage.value = 1; // 重置到第一页
+    };
+    
+    // 加载更多
+    const loadMore = async () => {
+      if (isLoadingMore.value || !hasMoreData.value) return;
+      
+      isLoadingMore.value = true;
+      try {
+        currentPage.value++;
+        await nextTick(); // 等待DOM更新
+      } finally {
+        isLoadingMore.value = false;
+      }
+    };
+    
+    // 触底检测
+    const handleScroll = () => {
+      if (isLoadingMore.value || !hasMoreData.value) return;
+      
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // 当滚动到距离底部200px时触发加载
+      if (scrollTop + windowHeight >= documentHeight - 200) {
+        loadMore();
+      }
+    };
+    
+    // 防抖滚动处理
+    let scrollTimeout;
+    const debouncedScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(handleScroll, 100);
+    };
+    
+    // 防抖搜索
+    let searchTimeout;
+    const debouncedSearch = () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        currentPage.value = 1; // 搜索时重置到第一页
+      }, 300);
+    };
+    
+    // 监听搜索变化
+    const watchSearch = () => {
+      currentPage.value = 1;
+    };
+    
+    // 生命周期
+    onMounted(() => {
+      initStore();
+      
+      // 添加滚动监听
+      window.addEventListener('scroll', debouncedScroll);
+    });
+    
+    onUnmounted(() => {
+      // 移除滚动监听
+      window.removeEventListener('scroll', debouncedScroll);
+    });
+    
+    return {
+      // 状态
+      loading,
+      saving,
+      showForm,
+      editingGift,
+      gifts,
+      books,
+      currentBook,
+      currentBookId,
+      searchQuery,
+      currentPage,
+      pageSize,
+      isLoadingMore,
+      sortBy,
+      sortOrder,
+      form,
+      toast,
+      
+      // 计算属性
+      filteredGifts,
+      totalPages,
+      paginatedGifts,
+      hasMoreData,
+      totalGifts,
+      totalAmount,
+      
+      // 方法
+      loadData,
+      getBookTitle,
+      resetForm,
+      editGift,
+      saveGift,
+      deleteGift,
+      setSortBy,
+      loadMore,
+      debouncedSearch,
+      showToast,
+      goBackToBooks,
+      formatBookDate
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
