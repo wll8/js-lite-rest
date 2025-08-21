@@ -304,6 +304,65 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(result[1].author.age).to.equal(30);
       expect(result[2].author.age).to.equal(35);
     });
+
+    it('get 多字段排序 - 数组形式', async () => {
+      const store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'js', user: 'A', view: 200 },
+          { id: 2, title: 'css', user: 'A', view: 100 },
+          { id: 3, title: 'html', user: 'B', view: 50 },
+          { id: 4, title: 'vue', user: 'B', view: 150 },
+        ],
+      });
+      // 使用数组形式的排序参数
+      const result = await store.get('book', { _sort: ['user', 'view'], _order: ['desc', 'asc'] });
+      expect(result[0].user).to.equal('B');
+      expect(result[0].view).to.equal(50);
+      expect(result[1].user).to.equal('B');
+      expect(result[1].view).to.equal(150);
+      expect(result[2].user).to.equal('A');
+      expect(result[2].view).to.equal(100);
+      expect(result[3].user).to.equal('A');
+      expect(result[3].view).to.equal(200);
+    });
+
+    it('get 单字段排序 - 数组形式', async () => {
+      const store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'js', view: 200 },
+          { id: 2, title: 'css', view: 100 },
+          { id: 3, title: 'html', view: 300 },
+        ],
+      });
+      // 单字段也可以使用数组形式
+      const result = await store.get('book', { _sort: ['view'], _order: ['desc'] });
+      expect(result[0].view).to.equal(300);
+      expect(result[1].view).to.equal(200);
+      expect(result[2].view).to.equal(100);
+    });
+
+    it('get 混合排序形式', async () => {
+      const store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'js', user: 'A', view: 200 },
+          { id: 2, title: 'css', user: 'A', view: 100 },
+          { id: 3, title: 'html', user: 'B', view: 50 },
+          { id: 4, title: 'vue', user: 'B', view: 150 },
+        ],
+      });
+      // 数组形式的 _sort 和字符串形式的 _order
+      const result1 = await store.get('book', { _sort: ['user', 'view'], _order: 'desc,asc' });
+      expect(result1[0].user).to.equal('B');
+      expect(result1[0].view).to.equal(50);
+      
+      // 字符串形式的 _sort 和数组形式的 _order
+      const result2 = await store.get('book', { _sort: 'user,view', _order: ['desc', 'asc'] });
+      expect(result2[0].user).to.equal('B');
+      expect(result2[0].view).to.equal(50);
+      
+      // 验证两种形式返回相同结果
+      expect(result1).to.deep.equal(result2);
+    });
   });
 
   // 截取
@@ -424,6 +483,9 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(result.length).to.equal(2);
       expect(result[0].id).to.equal(2);
       expect(result[1].id).to.equal(3);
+      const result2 = await store.get('book', { id_ne: [1, 2] });
+      expect(result2.length).to.equal(1);
+      expect(result2[0].id).to.equal(3);
     });
     it('get 模糊查询 - like单模式', async () => {
       const store = await JsLiteRest.create({
@@ -1638,6 +1700,241 @@ export function testMain(JsLiteRest, opt = {}) {
     it('overwrite 配置选项默认值验证', async () => {
       const store = await JsLiteRest.create({});
       expect(store.opt.overwrite).to.equal(false);
+    });
+  });
+  describe('优化数据获取', () => {
+    let store;
+    
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' },
+          { id: 3, title: 'html' }
+        ],
+        user: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      }, {
+        savePath: `test_get_optimization_${Date.now()}`
+      });
+    });
+
+    afterEach(async () => {
+      await cleanStorageData(store.opt.savePath);
+    });
+
+    it('get() 应该返回所有数据', async () => {
+      const allData = await store.get();
+      expect(allData).to.be.an('object');
+      expect(allData.book).to.be.an('array');
+      expect(allData.book.length).to.equal(3);
+      expect(allData.user).to.be.an('array');
+      expect(allData.user.length).to.equal(2);
+      expect(allData.book[0]).to.deep.equal({ id: 1, title: 'css' });
+      expect(allData.user[0]).to.deep.equal({ id: 1, name: 'Alice' });
+    });
+
+    it('get("") 应该返回所有数据', async () => {
+      const allData = await store.get('');
+      expect(allData).to.be.an('object');
+      expect(allData.book).to.be.an('array');
+      expect(allData.book.length).to.equal(3);
+      expect(allData.user).to.be.an('array');
+      expect(allData.user.length).to.equal(2);
+    });
+
+    it('get() 和 get("") 和 get("/") 应该返回相同的数据', async () => {
+      const data1 = await store.get();
+      const data2 = await store.get('');
+      const data3 = await store.get('/');
+      expect(data1).to.deep.equal(data2);
+      expect(data1).to.deep.equal(data3);
+    });
+  });
+
+  // 新增测试：_ne 支持数组功能
+  describe('_ne 支持数组', () => {
+    let store;
+    
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'css', category: 'frontend' },
+          { id: 2, title: 'js', category: 'frontend' },
+          { id: 3, title: 'python', category: 'backend' },
+          { id: 4, title: 'java', category: 'backend' },
+          { id: 5, title: 'html', category: 'frontend' },
+          { id: 6, title: 'go', category: 'backend' }
+        ]
+      }, {
+        savePath: `test_ne_array_${Date.now()}`
+      });
+    });
+
+    afterEach(async () => {
+      await cleanStorageData(store.opt.savePath);
+    });
+
+    it('_ne 单个值应该排除指定项', async () => {
+      const books = await store.get('book', { title_ne: 'css' });
+      expect(books.length).to.equal(5);
+      expect(books.every(book => book.title !== 'css')).to.be.true;
+    });
+
+    it('_ne 数组应该排除多个指定项', async () => {
+      const books = await store.get('book', { title_ne: ['css', 'js', 'html'] });
+      expect(books.length).to.equal(3);
+      expect(books.every(book => !['css', 'js', 'html'].includes(book.title))).to.be.true;
+      expect(books.map(book => book.title)).to.deep.equal(['python', 'java', 'go']);
+    });
+
+    it('_ne 数组与其他条件组合', async () => {
+      const books = await store.get('book', { 
+        category: 'frontend',
+        title_ne: ['css', 'html'] 
+      });
+      expect(books.length).to.equal(1);
+      expect(books[0].title).to.equal('js');
+      expect(books[0].category).to.equal('frontend');
+    });
+
+    it('_ne 空数组应该不排除任何项', async () => {
+      const books = await store.get('book', { title_ne: [] });
+      expect(books.length).to.equal(6);
+    });
+
+    it('_ne 数组中包含不存在的值', async () => {
+      const books = await store.get('book', { title_ne: ['css', 'nonexistent', 'js'] });
+      expect(books.length).to.equal(4);
+      expect(books.every(book => !['css', 'js'].includes(book.title))).to.be.true;
+    });
+  });
+
+  // 新增测试：kv 模式功能
+  describe('kv 模式', () => {
+    let store;
+    
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' }
+        ],
+        config: {
+          theme: 'dark',
+          language: 'zh',
+          settings: {
+            autoSave: true,
+            notifications: {
+              email: true,
+              push: false
+            }
+          }
+        }
+      }, {
+        savePath: `test_kv_mode_${Date.now()}`
+      });
+    });
+
+    afterEach(async () => {
+      await cleanStorageData(store.opt.savePath);
+    });
+
+    it('kv.get() 应该获取指定路径的值', async () => {
+      const theme = await store.kv.get('config.theme');
+      expect(theme).to.equal('dark');
+      
+      const autoSave = await store.kv.get('config.settings.autoSave');
+      expect(autoSave).to.equal(true);
+      
+      const email = await store.kv.get('config.settings.notifications.email');
+      expect(email).to.equal(true);
+    });
+
+    it('kv.get() 路径不存在时应该返回 undefined', async () => {
+      const result = await store.kv.get('config.nonexistent');
+      expect(result).to.be.undefined;
+      
+      const result2 = await store.kv.get('config.settings.nonexistent.deep');
+      expect(result2).to.be.undefined;
+    });
+
+    it('kv.set() 应该设置指定路径的值', async () => {
+      await store.kv.set('config.theme', 'light');
+      const theme = await store.kv.get('config.theme');
+      expect(theme).to.equal('light');
+      
+      await store.kv.set('config.settings.notifications.push', true);
+      const push = await store.kv.get('config.settings.notifications.push');
+      expect(push).to.equal(true);
+    });
+
+    it('kv.set() 应该创建新的嵌套路径', async () => {
+      await store.kv.set('config.newSection.newKey', 'newValue');
+      const value = await store.kv.get('config.newSection.newKey');
+      expect(value).to.equal('newValue');
+      
+      // 验证整个配置结构
+      const config = await store.get('config');
+      expect(config.newSection.newKey).to.equal('newValue');
+    });
+
+    it('kv.delete() 应该删除指定路径的值', async () => {
+      await store.kv.delete('config.settings.notifications.email');
+      const email = await store.kv.get('config.settings.notifications.email');
+      expect(email).to.be.undefined;
+      
+      // 验证其他值仍然存在
+      const push = await store.kv.get('config.settings.notifications.push');
+      expect(push).to.equal(false);
+    });
+
+    it('kv.delete() 删除不存在的路径应该不报错', async () => {
+      await store.kv.delete('config.nonexistent');
+      await store.kv.delete('config.settings.nonexistent.deep');
+      // 不应该抛出错误
+    });
+
+    it('kv 模式应该与原有数据持久化一致', async () => {
+      // 通过 kv 模式修改数据
+      await store.kv.set('config.theme', 'blue');
+      
+      // 通过常规方式获取数据验证
+      const config = await store.get('config');
+      expect(config.theme).to.equal('blue');
+      
+      // 通过 kv 模式修改数据
+      await store.kv.set('config.version', '1.0');
+      
+      // 通过常规方式验证
+      const updatedConfig = await store.get('config');
+      expect(updatedConfig.version).to.equal('1.0');
+      expect(updatedConfig.theme).to.equal('blue');
+      
+      // 通过 kv 模式验证
+      const version = await store.kv.get('config.version');
+      expect(version).to.equal('1.0');
+    });
+
+    it('kv.get() 应该能获取数组中的元素', async () => {
+      const firstBook = await store.kv.get('book.0');
+      expect(firstBook).to.deep.equal({ id: 1, title: 'css' });
+      
+      const firstBookTitle = await store.kv.get('book.0.title');
+      expect(firstBookTitle).to.equal('css');
+    });
+
+    it('kv.set() 应该能修改数组中的元素', async () => {
+      await store.kv.set('book.0.title', 'css3');
+      const firstBookTitle = await store.kv.get('book.0.title');
+      expect(firstBookTitle).to.equal('css3');
+      
+      // 验证整个数组结构
+      const books = await store.get('book');
+      expect(books[0].title).to.equal('css3');
+      expect(books[1].title).to.equal('js');
     });
   });
 }

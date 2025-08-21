@@ -100,6 +100,13 @@ export class Store {
       this[method] = (path, ...args) => this._request(method, path, ...args);
     });
 
+    // 初始化 kv 模式 API
+    this.kv = {
+      get: (key, defaultValue) => this._kvGet(key, defaultValue),
+      set: (key, value) => this._kvSet(key, value),
+      delete: (key) => this._kvDelete(key)
+    };
+
     // 初始化数据和适配器
     this._initPromise = this._initialize(data, opt);
   }
@@ -190,6 +197,59 @@ export class Store {
     return this;
   }
 
+  // kv 模式的辅助方法
+  async _kvGet(key, defaultValue) {
+    await this._ensureInitialized();
+    
+    const getDeepValue = (obj, path) => {
+      return path.split('.').reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
+    };
+    
+    const value = getDeepValue(this.opt.adapter.data, key);
+    return value !== undefined ? value : defaultValue;
+  }
+
+  async _kvSet(key, value) {
+    await this._ensureInitialized();
+    
+    const setDeepValue = (obj, path, val) => {
+      const keys = path.split('.');
+      const lastKey = keys.pop();
+      const target = keys.reduce((o, k) => {
+        if (!(k in o) || typeof o[k] !== 'object' || o[k] === null) {
+          o[k] = {};
+        }
+        return o[k];
+      }, obj);
+      target[lastKey] = val;
+    };
+    
+    setDeepValue(this.opt.adapter.data, key, value);
+    await this.opt.adapter.save();
+    return value;
+  }
+
+  async _kvDelete(key) {
+    await this._ensureInitialized();
+    
+    const deleteDeepValue = (obj, path) => {
+      const keys = path.split('.');
+      const lastKey = keys.pop();
+      const target = keys.reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
+      
+      if (target && typeof target === 'object') {
+        const deleted = target[lastKey];
+        delete target[lastKey];
+        return deleted;
+      }
+      return undefined;
+    };
+    
+    const deleted = deleteDeepValue(this.opt.adapter.data, key);
+    await this.opt.adapter.save();
+    return deleted;
+  }
+
   async _request(method, path, ...args) {
     // 确保初始化完成
     await this._ensureInitialized();
@@ -277,11 +337,18 @@ export class JsonAdapter {
 
   parsePath(path) {
     // "book/1" => ['book', '1']
+    if (!path) return [];
     return path.split('/').filter(Boolean);
   }
 
   get(path, query) {
     const segs = this.parsePath(path);
+    
+    // 如果 path 为空、undefined 或只有 /，返回所有数据
+    if (!path || path === '' || path === '/' || segs.length === 0) {
+      return this.data;
+    }
+    
     // 嵌套资源 GET /posts/1/comments
     if (segs.length === 3) {
       const [parentTable, parentId, childTable] = segs;
@@ -336,7 +403,13 @@ export class JsonAdapter {
             }
             if (operator === '_gte') return itemValue >= value;
             if (operator === '_lte') return itemValue <= value;
-            if (operator === '_ne') return itemValue != value;
+            if (operator === '_ne') {
+              // _ne 支持数组：如果 value 是数组，则 itemValue 不能等于数组中的任何一个值
+              if (Array.isArray(value)) {
+                return !value.some(v => itemValue == v);
+              }
+              return itemValue != value;
+            }
             if (operator === '_like') {
               if (typeof value === 'string' && value.includes('|')) {
                 const patterns = value.split('|');
