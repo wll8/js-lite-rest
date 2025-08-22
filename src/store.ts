@@ -1,27 +1,74 @@
+// TypeScript interfaces
+export interface StoreOptions {
+  idKeySuffix?: string;
+  savePath?: string;
+  overwrite?: boolean;
+  load?: (key: string) => Promise<any>;
+  save?: (key: string, data: any) => Promise<void>;
+  adapter?: Adapter;
+}
 
-function genId() {
+export interface Adapter {
+  data: any;
+  get(path: string, query?: any): Promise<any>;
+  post(path: string, data?: any): Promise<any>;
+  put(path: string, data?: any): Promise<any>;
+  delete(path: string, query?: any): Promise<any>;
+  patch(path: string, data?: any): Promise<any>;
+  head?(path: string): Promise<any>;
+  options?(path: string): Promise<any>;
+  save(): Promise<void>;
+}
+
+interface HttpStatus {
+  code: number;
+  message: string;
+}
+
+interface ApiResponse {
+  code: number;
+  success: boolean;
+  data: any;
+  message?: string;
+}
+
+interface KVApi {
+  get(key: string, defaultValue?: any): Promise<any>;
+  set(key: string, value: any): Promise<any>;
+  delete(key: string): Promise<any>;
+}
+
+interface InfoApi {
+  getTables(): Promise<string[]>;
+  getStorageSize(): Promise<number>;
+  getStorageFreeSize(): Promise<number>;
+}
+
+export type MiddlewareFunction = (args: any[], next: () => Promise<any>, opt: StoreOptions) => Promise<any>;
+
+function genId(): string {
   const currentId = getTimestampPlusId();
   return currentId.toString(36).toUpperCase();
 }
 
-function getTimestampPlusId(start = +new Date(2025, 4, 5)) {
+function getTimestampPlusId(start: number = +new Date(2025, 4, 5)): number {
   const currentTime = Date.now() - start;
-  const lastId = globalThis[`lastId_${start}`];
+  const lastId = (globalThis as any)[`lastId_${start}`];
   
   if (lastId === undefined) {
     // 首次调用，直接使用时间戳
-    globalThis[`lastId_${start}`] = currentTime;
+    (globalThis as any)[`lastId_${start}`] = currentTime;
     return currentTime;
   } else {
     // 确保新ID既不小于当前时间戳，也大于上一个ID
     const nextId = Math.max(currentTime, lastId + 1);
-    globalThis[`lastId_${start}`] = nextId;
+    (globalThis as any)[`lastId_${start}`] = nextId;
     return nextId;
   }
 }
 
-function getBaseOpt(opt = {}) {
-  const newOpt = {
+function getBaseOpt(opt: Partial<StoreOptions> = {}): StoreOptions {
+  const newOpt: StoreOptions = {
     idKeySuffix: 'Id',
     savePath: typeof window === 'undefined' ? `js-lite-rest.json` : `js-lite-rest`,
     overwrite: false, // 默认不覆盖已有数据
@@ -31,7 +78,7 @@ function getBaseOpt(opt = {}) {
 }
 
 // HTTP 状态码常量
-const HTTP_STATUS = {
+const HTTP_STATUS: Record<string, HttpStatus> = {
   OK: { code: 200, message: '成功' },
   CREATED: { code: 201, message: '已创建' },
   NO_CONTENT: { code: 204, message: '无内容' },
@@ -42,7 +89,7 @@ const HTTP_STATUS = {
 };
 
 // 创建标准响应格式
-function createResponse(code, data, message) {
+function createResponse(code: HttpStatus | number, data?: any, message?: string): ApiResponse {
   let realCode = code, realMessage = message;
   if (realMessage == null && typeof code === 'object' && code.code) {
     realMessage = code.message;
@@ -57,21 +104,21 @@ function createResponse(code, data, message) {
 }
 
 // 创建错误响应
-function createErrorResponse(code, message, data = null) {
-  const response = createResponse(code, data, message);
+function createErrorResponse(code: HttpStatus | number, message?: string | string[], data: any = null): Error & ApiResponse {
+  const response = createResponse(code, data, message as string);
   response.success = false;
   const errorMessage = Array.isArray(message)
     ? (message.find(m => typeof m === 'string' && m) || response.message || 'Request failed')
     : (typeof message === 'string' && message) ? message : (response.message || 'Request failed');
-  const errorObj = new Error(errorMessage);
+  const errorObj = new Error(errorMessage) as Error & ApiResponse;
   Object.assign(errorObj, response);
   return errorObj;
 }
 
-function compose(middlewares, core, opt) {
-  return function (args) {
+function compose(middlewares: MiddlewareFunction[], core: MiddlewareFunction, opt: StoreOptions) {
+  return function (args: any[]) {
     let index = -1;
-    function dispatch(i, _args) {
+    function dispatch(i: number, _args: any[]): Promise<any> {
       if (i <= index) return Promise.reject(new Error('next() called multiple times'));
       index = i;
       let fn = middlewares[i];
@@ -88,7 +135,14 @@ function compose(middlewares, core, opt) {
 }
 
 export class Store {
-  constructor(data = {}, opt = {}) {
+  opt: StoreOptions;
+  middlewares: MiddlewareFunction[];
+  methods: string[];
+  kv: KVApi;
+  info: InfoApi;
+  private _initPromise: Promise<Store> | null;
+
+  constructor(data: any = {}, opt: Partial<StoreOptions> = {}) {
     this.opt = getBaseOpt(opt);
     this.middlewares = [];
 
@@ -97,14 +151,14 @@ export class Store {
 
     // 自动生成 HTTP 方法
     this.methods.forEach(method => {
-      this[method] = (path, ...args) => this._request(method, path, ...args);
+      (this as any)[method] = (path: string, ...args: any[]) => this._request(method, path, ...args);
     });
 
     // 初始化 kv 模式 API
     this.kv = {
-      get: (key, defaultValue) => this._kvGet(key, defaultValue),
-      set: (key, value) => this._kvSet(key, value),
-      delete: (key) => this._kvDelete(key)
+      get: (key: string, defaultValue?: any) => this._kvGet(key, defaultValue),
+      set: (key: string, value: any) => this._kvSet(key, value),
+      delete: (key: string) => this._kvDelete(key)
     };
 
     // 初始化 info 模式 API
@@ -119,13 +173,13 @@ export class Store {
   }
 
   // 静态方法用于异步创建 Store 实例
-  static async create(data = {}, opt = {}) {
+  static async create(data: any = {}, opt: Partial<StoreOptions> = {}): Promise<Store> {
     const store = new Store(data, opt);
     await store._ensureInitialized();
     return store;
   }
 
-  async _initialize(data = {}, opt = {}) {
+  async _initialize(data: any = {}, opt: Partial<StoreOptions> = {}): Promise<Store> {
     let shouldSaveInitialData = false;
     let finalData = data;
 
@@ -168,7 +222,7 @@ export class Store {
   }
 
   // 确保初始化完成的辅助方法
-  async _ensureInitialized() {
+  async _ensureInitialized(): Promise<void> {
     if (this._initPromise) {
       await this._initPromise;
       this._initPromise = null;
@@ -176,7 +230,7 @@ export class Store {
   }
 
   // 合并数据的辅助方法：existing 数据优先，新数据中不存在的 key 才会被添加
-  _mergeData(existingData, newData) {
+  _mergeData(existingData: any, newData: any): any {
     const result = { ...existingData };
     
     // 遍历新数据的每个 key
@@ -193,7 +247,7 @@ export class Store {
     return result;
   }
 
-  use(middleware) {
+  use(middleware: MiddlewareFunction): Store {
     // 只支持函数格式的中间件：function(args, next, opt) { ... }
     // 如果拦截器中抛出错误，会进入 .catch 中处理
     if (typeof middleware === 'function') {
@@ -205,23 +259,23 @@ export class Store {
   }
 
   // kv 模式的辅助方法
-  async _kvGet(key, defaultValue) {
+  async _kvGet(key: string, defaultValue?: any): Promise<any> {
     await this._ensureInitialized();
     
-    const getDeepValue = (obj, path) => {
+    const getDeepValue = (obj: any, path: string): any => {
       return path.split('.').reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
     };
     
-    const value = getDeepValue(this.opt.adapter.data, key);
+    const value = getDeepValue(this.opt.adapter!.data, key);
     return value !== undefined ? value : defaultValue;
   }
 
-  async _kvSet(key, value) {
+  async _kvSet(key: string, value: any): Promise<any> {
     await this._ensureInitialized();
     
-    const setDeepValue = (obj, path, val) => {
+    const setDeepValue = (obj: any, path: string, val: any): void => {
       const keys = path.split('.');
-      const lastKey = keys.pop();
+      const lastKey = keys.pop()!;
       const target = keys.reduce((o, k) => {
         if (!(k in o) || typeof o[k] !== 'object' || o[k] === null) {
           o[k] = {};
@@ -231,17 +285,17 @@ export class Store {
       target[lastKey] = val;
     };
     
-    setDeepValue(this.opt.adapter.data, key, value);
-    await this.opt.adapter.save();
+    setDeepValue(this.opt.adapter!.data, key, value);
+    await this.opt.adapter!.save();
     return value;
   }
 
-  async _kvDelete(key) {
+  async _kvDelete(key: string): Promise<any> {
     await this._ensureInitialized();
     
-    const deleteDeepValue = (obj, path) => {
+    const deleteDeepValue = (obj: any, path: string): any => {
       const keys = path.split('.');
-      const lastKey = keys.pop();
+      const lastKey = keys.pop()!;
       const target = keys.reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
       
       if (target && typeof target === 'object') {
@@ -252,17 +306,17 @@ export class Store {
       return undefined;
     };
     
-    const deleted = deleteDeepValue(this.opt.adapter.data, key);
-    await this.opt.adapter.save();
+    const deleted = deleteDeepValue(this.opt.adapter!.data, key);
+    await this.opt.adapter!.save();
     return deleted;
   }
 
   // info 模式的辅助方法
-  async _infoGetTables() {
+  async _infoGetTables(): Promise<string[]> {
     await this._ensureInitialized();
     
-    const data = this.opt.adapter.data;
-    const tables = [];
+    const data = this.opt.adapter!.data;
+    const tables: string[] = [];
     
     for (const key in data) {
       if (data.hasOwnProperty(key) && Array.isArray(data[key])) {
@@ -273,8 +327,7 @@ export class Store {
     return tables;
   }
 
-
-  async _infoGetStorageSize() {
+  async _infoGetStorageSize(): Promise<number> {
     await this._ensureInitialized();
     
     // 在浏览器环境下，尝试获取更准确的存储大小
@@ -303,12 +356,12 @@ export class Store {
     }
     
     // 默认方式：计算内存中数据的 JSON 字符串大小
-    const data = this.opt.adapter.data;
+    const data = this.opt.adapter!.data;
     const jsonString = JSON.stringify(data);
     return new Blob([jsonString]).size;
   }
 
-  async _infoGetStorageFreeSize() {
+  async _infoGetStorageFreeSize(): Promise<number> {
     await this._ensureInitialized();
     
     // 判断当前环境和存储类型
@@ -317,7 +370,7 @@ export class Store {
       if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
         try {
           const estimate = await navigator.storage.estimate();
-          return estimate.quota - estimate.usage;
+          return (estimate.quota || 0) - (estimate.usage || 0);
         } catch (error) {
           // 如果 API 不可用，返回 -1
           return -1;
@@ -351,12 +404,12 @@ export class Store {
     }
   }
 
-  async _request(method, path, ...args) {
+  async _request(method: string, path: string, ...args: any[]): Promise<any> {
     // 确保初始化完成
     await this._ensureInitialized();
 
     try {
-      const core = async (_args) => {
+      const core: MiddlewareFunction = async (_args: any[]) => {
         const [method, path, ...restArgs] = _args;
 
         // 检查方法是否支持
@@ -365,12 +418,12 @@ export class Store {
         }
 
         // 动态调用适配器方法
-        if (typeof this.opt.adapter[method] === 'function') {
-          const result = await this.opt.adapter[method](path, ...restArgs);
+        if (typeof (this.opt.adapter as any)[method] === 'function') {
+          const result = await (this.opt.adapter as any)[method](path, ...restArgs);
 
           if (result && typeof result === 'object' && result.data !== undefined && result.error !== undefined) {
             const errors = result.error;
-            const hasErrors = Array.isArray(errors) && errors.some(err => err !== null);
+            const hasErrors = Array.isArray(errors) && errors.some((err: any) => err !== null);
             if (hasErrors) {
               // 有错误时，返回失败状态，状态码303，包含数据和错误
               return Promise.reject(createErrorResponse(HTTP_STATUS.SEE_OTHER, errors, result.data));
@@ -382,7 +435,7 @@ export class Store {
           }
 
           // 根据方法类型确定状态码
-          let statusCode;
+          let statusCode: HttpStatus;
           switch (method.toLowerCase()) {
             case 'post':
               statusCode = HTTP_STATUS.CREATED;
@@ -409,7 +462,7 @@ export class Store {
 
       const fn = compose(this.middlewares, core, this.opt);
       return await fn([method, path, ...args]);
-    } catch (error) {
+    } catch (error: any) {
       if (error && error.success !== undefined) {
         throw error;
       }
@@ -420,30 +473,33 @@ export class Store {
 }
 
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
-export class JsonAdapter {
-  constructor(data = {}, opt = {}) {
+export class JsonAdapter implements Adapter {
+  opt: StoreOptions;
+  data: any;
+
+  constructor(data: any = {}, opt: StoreOptions = {}) {
     this.opt = opt;
     this.data = data;
   }
 
-  getRelationKey(table) {
-    return table + this.opt.idKeySuffix;
+  getRelationKey(table: string): string {
+    return table + (this.opt.idKeySuffix || 'Id');
   }
 
-  async save() {
+  async save(): Promise<void> {
     if (this.opt.save) {
-      await this.opt.save(this.opt.savePath, this.data);
+      await this.opt.save(this.opt.savePath!, this.data);
     }
   }
 
-  parsePath(path) {
+  parsePath(path: string): string[] {
     // "book/1" => ['book', '1']
     // "books[1].comments" => ['books', '[1]', 'comments']
     if (!path) return [];
     
     // 处理数组索引语法：books[1].comments
     if (path.includes('[') && path.includes(']')) {
-      const segments = [];
+      const segments: string[] = [];
       let current = '';
       let inBrackets = false;
       
@@ -487,7 +543,7 @@ export class JsonAdapter {
     return path.split('/').filter(Boolean);
   }
 
-  get(path, query) {
+  async get(path: string, query?: any): Promise<any> {
     const segs = this.parsePath(path);
     
     // 如果 path 为空、undefined 或只有 /，返回所有数据
@@ -500,7 +556,7 @@ export class JsonAdapter {
       const [parentTable, parentId, childTable] = segs;
       if (this.data && this.data[childTable] && Array.isArray(this.data[childTable])) {
         const parentIdKey = this.getRelationKey(parentTable);
-        return this.data[childTable].filter(item => String(item[parentIdKey]) === parentId);
+        return this.data[childTable].filter((item: any) => String(item[parentIdKey]) === parentId);
       }
     }
     let cur = this.data;
@@ -516,7 +572,7 @@ export class JsonAdapter {
           return null;
         }
       } else if (Array.isArray(cur)) {
-        cur = cur.find(item => String(item.id) === seg);
+        cur = cur.find((item: any) => String(item.id) === seg);
       } else {
         cur = cur[seg];
       }
@@ -535,21 +591,21 @@ export class JsonAdapter {
       if (typeof filterQuery._q === 'string' && filterQuery._q.length > 0) {
         const q = filterQuery._q.toLowerCase();
         delete filterQuery._q;
-        const matchAnyField = (obj) => {
+        const matchAnyField = (obj: any): boolean => {
           if (obj == null) return false;
           if (typeof obj === 'object') {
             return Object.values(obj).some(v => matchAnyField(v));
           }
           return String(obj).toLowerCase().includes(q);
         };
-        filteredData = filteredData.filter(item => matchAnyField(item));
+        filteredData = filteredData.filter((item: any) => matchAnyField(item));
       }
       // 过滤
       if (Object.keys(filterQuery).length > 0) {
-        filteredData = filteredData.filter(item => {
+        filteredData = filteredData.filter((item: any) => {
           return Object.keys(filterQuery).every(k => {
             let value = filterQuery[k];
-            const getDeepValue = (obj, path) => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+            const getDeepValue = (obj: any, path: string): any => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
             const fieldMatch = k.match(/^(.+?)(_gte|_lte|_ne|_like)$/);
             const fieldName = fieldMatch ? fieldMatch[1] : k;
             const operator = fieldMatch ? fieldMatch[2] : null;
@@ -585,10 +641,10 @@ export class JsonAdapter {
         for (const embedField of embedFields) {
           const childArr = this.data[embedField];
           if (!Array.isArray(childArr)) continue;
-          filteredData.forEach(item => {
+          filteredData.forEach((item: any) => {
             if (!item) return;
             const idKey = item.id;
-            item[embedField] = childArr.filter(child => child[this.getRelationKey(segs[0])] == idKey);
+            item[embedField] = childArr.filter((child: any) => child[this.getRelationKey(segs[0])] == idKey);
           });
         }
       }
@@ -598,9 +654,9 @@ export class JsonAdapter {
         for (const expandField of expandFields) {
           const parentArr = this.data[expandField];
           if (!Array.isArray(parentArr)) continue;
-          filteredData.forEach(item => {
+          filteredData.forEach((item: any) => {
             if (!item) return;
-            const parent = parentArr.find(parent => parent.id == item[this.getRelationKey(expandField)]);
+            const parent = parentArr.find((parent: any) => parent.id == item[this.getRelationKey(expandField)]);
             if (parent) item[expandField] = parent;
           });
         }
@@ -611,11 +667,11 @@ export class JsonAdapter {
         if (_sort) {
           const sortFields = Array.isArray(_sort) ? _sort : _sort.split(',');
           const orderFields = _order ? (Array.isArray(_order) ? _order : _order.split(',')) : [];
-          filteredData.sort((a, b) => {
+          filteredData.sort((a: any, b: any) => {
             for (let i = 0; i < sortFields.length; i++) {
               const field = sortFields[i].trim();
               const order = orderFields[i] ? orderFields[i].trim().toLowerCase() : 'asc';
-              const getDeepValue = (obj, path) => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
+              const getDeepValue = (obj: any, path: string): any => path.split('.').reduce((o, key) => (o ? o[key] : undefined), obj);
               const aValue = getDeepValue(a, field);
               const bValue = getDeepValue(b, field);
               if (aValue == null && bValue == null) continue;
@@ -672,13 +728,13 @@ export class JsonAdapter {
     return cur;
   }
 
-  async post(path, data) {
+  async post(path: string, data?: any): Promise<any> {
     const segs = this.parsePath(path);
     // 批量创建 /posts，body为数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      const results = [];
-      const errors = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       let hasErrors = false;
 
       for (let i = 0; i < data.length; i++) {
@@ -695,7 +751,7 @@ export class JsonAdapter {
           arr.push(newItem);
           results.push(newItem);
           errors.push(null);
-        } catch (error) {
+        } catch (error: any) {
           results.push(null);
           errors.push(error.message || '创建失败');
           hasErrors = true;
@@ -749,13 +805,13 @@ export class JsonAdapter {
     return data;
   }
 
-  async put(path, data) {
+  async put(path: string, data?: any): Promise<any> {
     const segs = this.parsePath(path);
     // 批量全量修改 /posts，body为带id数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      const results = [];
-      const errors = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       let hasErrors = false;
 
       for (let i = 0; i < data.length; i++) {
@@ -766,7 +822,7 @@ export class JsonAdapter {
           hasErrors = true;
           continue;
         }
-        const idx = arr.findIndex(x => String(x.id) === String(item.id));
+        const idx = arr.findIndex((x: any) => String(x.id) === String(item.id));
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${item.id} 的记录`);
@@ -806,25 +862,25 @@ export class JsonAdapter {
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素更新');
-    const idx = cur.findIndex(item => String(item.id) === key);
+    const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
     await this.save();
     return cur[idx];
   }
 
-  async delete(path, query) {
+  async delete(path: string, query?: any): Promise<any> {
     const segs = this.parsePath(path);
     // 批量删除 /posts?id=1&id=2
     if (segs.length === 1 && query && query.id && this.data && Array.isArray(this.data[segs[0]])) {
       const ids = Array.isArray(query.id) ? query.id : [query.id];
       const arr = this.data[segs[0]];
-      const results = [];
-      const errors = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       let hasErrors = false;
 
       for (const id of ids) {
-        const idx = arr.findIndex(item => String(item.id) === String(id));
+        const idx = arr.findIndex((item: any) => String(item.id) === String(id));
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${id} 的记录`);
@@ -864,20 +920,20 @@ export class JsonAdapter {
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素删除');
-    const idx = cur.findIndex(item => String(item.id) === key);
+    const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     const del = cur.splice(idx, 1)[0];
     await this.save();
     return del;
   }
 
-  async patch(path, data) {
+  async patch(path: string, data?: any): Promise<any> {
     const segs = this.parsePath(path);
     // 批量部分修改 /posts，body为带id数组
     if (segs.length === 1 && Array.isArray(data) && this.data && Array.isArray(this.data[segs[0]])) {
       const arr = this.data[segs[0]];
-      const results = [];
-      const errors = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       let hasErrors = false;
 
       for (let i = 0; i < data.length; i++) {
@@ -888,7 +944,7 @@ export class JsonAdapter {
           hasErrors = true;
           continue;
         }
-        const idx = arr.findIndex(x => String(x.id) === String(item.id));
+        const idx = arr.findIndex((x: any) => String(x.id) === String(item.id));
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${item.id} 的记录`);
@@ -928,7 +984,7 @@ export class JsonAdapter {
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素 patch');
-    const idx = cur.findIndex(item => String(item.id) === key);
+    const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
     await this.save();
@@ -937,7 +993,7 @@ export class JsonAdapter {
 }
 
 // 内置拦截器：lite
-const lite = async (args, next) => {
+const lite: MiddlewareFunction = async (args: any[], next: () => Promise<any>) => {
   try {
     const result = await next();
     if (result && typeof result === 'object' && result.success !== undefined) {
@@ -948,7 +1004,7 @@ const lite = async (args, next) => {
       }
     }
     return result;
-  } catch (error) {
+  } catch (error: any) {
     // 处理错误情况
     if (error && error.success !== undefined) {
       throw error;

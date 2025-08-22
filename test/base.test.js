@@ -1497,7 +1497,7 @@ export function testMain(JsLiteRest, opt = {}) {
 
     it('缺少 load 函数时的错误处理', async () => {
       // 导入基础的 Store 类来测试这个错误情况
-      const { Store: BaseStore } = await import('../src/store.js');
+      const { Store: BaseStore } = await import('../src/store.ts');
 
       try {
         await BaseStore.create('test-path', {

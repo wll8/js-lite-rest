@@ -46,9 +46,9 @@ const envMap = {
 
 if (mode === 'dev') {
   if (env === 'node') {
-    await envMap[env]('../src/store.node.js')
+    await envMap[env]('../src/store.node.ts')
   } else if (env === 'browser') {
-    await envMap[env]('../src/store.browser.js')
+    await envMap[env]('../src/store.browser.ts')
   }
 } else if (mode === 'build') {
   if (env === 'node') {
