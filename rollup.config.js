@@ -4,12 +4,13 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 
 export default defineConfig([
-  // Types generation (主类型文件)
+  // Types generation (类型定义文件)
   {
     input: 'src/index.ts',
     output: [
-      { file: 'dist/index.js', format: 'esm' },
+      { file: 'dist/index.js', format: 'esm', inlineDynamicImports: true },
     ],
+    external: ['fs', 'fs/promises', 'localforage'],
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',
@@ -22,14 +23,13 @@ export default defineConfig([
       })
     ],
   },
-  // Node
+  // ESM 格式 (现代环境首选)
   {
-    input: 'src/store.node.ts',
+    input: 'src/index.ts',
     output: [
-      { file: 'dist/js-lite-rest.node.esm.js', format: 'esm', sourcemap: true },
-      { file: 'dist/js-lite-rest.node.cjs.js', format: 'cjs', sourcemap: true },
+      { file: 'dist/js-lite-rest.esm.js', format: 'esm', sourcemap: true, inlineDynamicImports: true },
     ],
-    external: ['fs', 'fs/promises'],
+    external: ['fs', 'fs/promises', 'localforage'],
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',
@@ -41,12 +41,36 @@ export default defineConfig([
       commonjs()
     ],
   },
-  // Browser
+  // CJS 格式 (Node.js 兼容性)
   {
-    input: 'src/store.browser.ts',
+    input: 'src/index.ts',
     output: [
-      { file: 'dist/js-lite-rest.browser.esm.js', format: 'esm', sourcemap: true },
-      { file: 'dist/js-lite-rest.browser.umd.js', format: 'umd', name: 'JsLiteRest', sourcemap: true },
+      { file: 'dist/js-lite-rest.cjs.js', format: 'cjs', sourcemap: true, inlineDynamicImports: true, exports: 'named' },
+    ],
+    external: ['fs', 'fs/promises', 'localforage'],
+    plugins: [
+      typescript({
+        tsconfig: './tsconfig.json',
+        declaration: false,
+        rootDir: 'src',
+        sourceMap: true
+      }),
+      nodeResolve(),
+      commonjs()
+    ],
+  },
+  // UMD 格式 (浏览器 <script> 标签直接使用)
+  {
+    input: 'src/index.browser.ts',
+    output: [
+      { 
+        file: 'dist/js-lite-rest.umd.js', 
+        format: 'umd', 
+        name: 'JsLiteRest', 
+        sourcemap: true, 
+        inlineDynamicImports: true,
+        exports: 'default'
+      },
     ],
     external: [],
     plugins: [

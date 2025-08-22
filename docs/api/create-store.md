@@ -19,8 +19,7 @@ JsLiteRest.create(data?, options?)
 #### 作为对象传入
 
 ```javascript
-import JsLiteRest from 'js-lite-rest/browser'; // 浏览器环境
-// import JsLiteRest from 'js-lite-rest'; // Node.js 环境
+import JsLiteRest from 'js-lite-rest'; // 
 
 const store = await JsLiteRest.create({
   users: [
@@ -42,7 +41,7 @@ import JsLiteRest from 'js-lite-rest';
 const store = await JsLiteRest.create('./data.json');
 
 // 浏览器环境 - 存储键名
-import JsLiteRest from 'js-lite-rest/browser';
+import JsLiteRest from 'js-lite-rest';
 const store = await JsLiteRest.create('my-app-data');
 ```
 
@@ -126,8 +125,7 @@ const store = await JsLiteRest.create({ users: [] }, {
 ### 基本用法
 
 ```javascript
-import JsLiteRest from 'js-lite-rest/browser'; // 浏览器环境
-// import JsLiteRest from 'js-lite-rest'; // Node.js 环境
+import JsLiteRest from 'js-lite-rest'; // 
 
 // 创建空的 store
 const store = await JsLiteRest.create();
@@ -161,7 +159,7 @@ const store = await JsLiteRest.create('./existing-data.json');
 ### 浏览器环境
 
 ```javascript
-import JsLiteRest from 'js-lite-rest/browser';
+import JsLiteRest from 'js-lite-rest';
 
 // 使用默认存储键名
 const store = await JsLiteRest.create();
@@ -220,7 +218,7 @@ const store = await JsLiteRest.create({}, {
 
 ```javascript
 // UMD 版本
-<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
 <script>
   // 使用全局变量 JsLiteRest
   (async () => {

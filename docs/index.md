@@ -19,7 +19,7 @@ hero:
 features:
   - icon: 🚀
     title: 轻量级
-    details: 零依赖，压缩后仅几KB，不会增加项目负担
+    details: 自包含设计，UMD 版本无需额外依赖，不会增加项目负担
   - icon: 🌐
     title: 跨平台
     details: 同时支持 Node.js 和浏览器环境，一套代码多端运行
@@ -160,12 +160,12 @@ await store.get('users', { _q: '张三' });
 await store.get('users', {
   age_gte: 18,
   city_like: '北京',
-  status_ne: ['deleted', 'suspended'], // 排除多个值（新功能）
+  status_ne: ['deleted', 'suspended'], // 排除多个值
   _sort: 'createdAt',
   _order: 'desc'
 });
 
-// 获取所有数据（新功能）
+// 获取所有数据
 const allData = await store.get(); // 等同于 store.get('') 和 store.get('/')
 ```
 
@@ -176,7 +176,7 @@ const allData = await store.get(); // 等同于 store.get('') 和 store.get('/')
 await store.get('posts/1/comments');
 await store.post('posts/1/comments', { content: '很好的文章！' });
 
-// 数组项中的数组管理（新功能）
+// 数组项中的数组管理
 await store.get('books[0].comments'); // 获取第1本书的评论
 await store.post('books[0].comments', { content: '很棒的书！' }); // 添加评论
 

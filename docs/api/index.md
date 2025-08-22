@@ -38,7 +38,7 @@ await store.delete('users/1');                    // 删除用户
 <html>
 <head>
     <title>js-lite-rest 示例</title>
-    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+    <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
 </head>
 <body>
     <script>
@@ -230,10 +230,10 @@ await store.get('users', { _page: 1, _limit: 10 });
 // 使用过滤条件
 await store.get('users', { status: 'active', age_gte: 18 });
 
-// 排除多个值（新功能）
+// 排除多个值
 await store.get('users', { role_ne: ['admin', 'guest', 'test'] });
 
-// 获取所有数据（新功能）
+// 获取所有数据
 const allData = await store.get(); // 等同于 store.get('') 和 store.get('/')
 ```
 

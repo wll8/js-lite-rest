@@ -11,7 +11,7 @@
 
 ## ✨ 特性
 
-- 🚀 **轻量级**：零依赖，压缩后仅几KB
+- 🚀 **轻量级**：自包含设计，UMD 版本无需额外依赖
 - 🌐 **跨平台**：同时支持 Node.js 和浏览器环境
 - 📦 **多种存储**：支持内存、文件系统、localStorage 存储
 - 🔄 **RESTful API**：提供标准的 HTTP 风格 CRUD 操作接口
@@ -39,11 +39,11 @@ pnpm add js-lite-rest
 ```html
 <!-- ES Module -->
 <script type="module">
-  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.esm.js';
 </script>
 
-<!-- UMD (全局变量) -->
-<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+<!-- UMD (全局变量，自包含，无需额外依赖) -->
+<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
 ```
 
 ## 🚀 快速开始
@@ -90,23 +90,28 @@ await store.delete('books/2');
 <html>
 <head>
   <title>js-lite-rest 示例</title>
-  <script type="module">
-    import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  <!-- 使用 UMD 版本，自包含无需额外依赖 -->
+  <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
+  <script>
+    async function demo() {
+      // 在浏览器中使用 localStorage 存储
+      const store = await JsLiteRest.create();
 
-    // 在浏览器中使用 localStorage 存储
-    const store = await JsLiteRest.create();
+      // 添加用户数据
+      await store.post('users', { name: 'Alice', email: 'alice@example.com' });
+      await store.post('users', { name: 'Bob', email: 'bob@example.com' });
 
-    // 添加用户数据
-    await store.post('users', { name: 'Alice', email: 'alice@example.com' });
-    await store.post('users', { name: 'Bob', email: 'bob@example.com' });
+      // 查询所有用户
+      const users = await store.get('users');
+      console.log('所有用户:', users);
 
-    // 查询所有用户
-    const users = await store.get('users');
-    console.log('所有用户:', users);
-
-    // 查询特定用户
-    const user = await store.get('users/1');
-    console.log('用户 1:', user);
+      // 查询特定用户
+      const user = await store.get('users/1');
+      console.log('用户 1:', user);
+    }
+    
+    // 等待页面加载后执行
+    document.addEventListener('DOMContentLoaded', demo);
   </script>
 </head>
 <body>
