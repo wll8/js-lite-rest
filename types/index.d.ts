@@ -76,6 +76,30 @@ export declare class JsonAdapter implements Adapter {
 }
 
 /**
+ * KV 模式 API 接口
+ */
+export interface KVApi {
+  /** 获取值 */
+  get(key: string, defaultValue?: any): Promise<any>;
+  /** 设置值 */
+  set(key: string, value: any): Promise<any>;
+  /** 删除键 */
+  delete(key: string): Promise<any>;
+}
+
+/**
+ * Info 模式 API 接口
+ */
+export interface InfoApi {
+  /** 获取所有表名（数组类型的键） */
+  getTables(): Promise<string[]>;
+  /** 获取存储空间占用大小（字节） */
+  getStorageSize(): Promise<number>;
+  /** 获取存储空间剩余大小（字节），文件存储返回 -1 */
+  getStorageFreeSize(): Promise<number>;
+}
+
+/**
  * Store 主类
  */
 export declare class Store {
@@ -83,6 +107,12 @@ export declare class Store {
   
   /** 静态方法用于异步创建 Store 实例 */
   static create(data?: any, options?: StoreOptions): Promise<Store>;
+  
+  /** KV 模式 API */
+  kv: KVApi;
+  
+  /** Info 模式 API */
+  info: InfoApi;
   
   /** 添加中间件 */
   use(middleware: MiddlewareFunction): Store;
@@ -109,15 +139,31 @@ export declare class Store {
   options(path: string): Promise<any>;
 }
 
+/**
+ * JsLiteRest 主对象接口
+ */
+export interface JsLiteRestInterface {
+  /** 获取底层存储驱动程序名称 */
+  driver(): Promise<string>;
+  /** 创建 Store 实例 */
+  create(data?: any, options?: StoreOptions): Promise<Store>;
+  /** Store 类 */
+  Store: typeof Store;
+  /** 内置拦截器 */
+  interceptor: {
+    lite: MiddlewareFunction;
+  };
+}
+
 /** 创建 Node.js 环境的 Store 实例 */
 declare function createNodeStore(data?: any, options?: StoreOptions): Promise<Store>;
 
 /** 创建浏览器环境的 Store 实例 */
 declare function createBrowserStore(data?: any, options?: StoreOptions): Promise<Store>;
 
-// 默认导出（根据环境自动选择）
-declare const createStore: typeof createNodeStore | typeof createBrowserStore;
-export default createStore;
+// 默认导出 JsLiteRest 对象
+declare const JsLiteRest: JsLiteRestInterface;
+export default JsLiteRest;
 
 // 具名导出
-export { createNodeStore, createBrowserStore };
+export { createNodeStore, createBrowserStore, Store, JsonAdapter };

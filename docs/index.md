@@ -160,9 +160,13 @@ await store.get('users', { _q: '张三' });
 await store.get('users', {
   age_gte: 18,
   city_like: '北京',
+  status_ne: ['deleted', 'suspended'], // 排除多个值（新功能）
   _sort: 'createdAt',
   _order: 'desc'
 });
+
+// 获取所有数据（新功能）
+const allData = await store.get(); // 等同于 store.get('') 和 store.get('/')
 ```
 
 ### 🔗 关联操作
@@ -172,9 +176,30 @@ await store.get('users', {
 await store.get('posts/1/comments');
 await store.post('posts/1/comments', { content: '很好的文章！' });
 
+// 数组项中的数组管理（新功能）
+await store.get('books[0].comments'); // 获取第1本书的评论
+await store.post('books[0].comments', { content: '很棒的书！' }); // 添加评论
+
 // 关联嵌入
 await store.get('posts', { _embed: 'comments' });
 await store.get('comments', { _expand: 'post' });
+```
+
+### 🎛️ 专用模式
+
+```javascript
+// KV 模式 - 键值对操作
+await store.kv.set('config.theme', 'dark');
+const theme = await store.kv.get('config.theme');
+await store.kv.delete('config.deprecated');
+
+// Info 模式 - 存储信息
+const tables = await store.info.getTables(); // 获取所有表名
+const size = await store.info.getStorageSize(); // 占用空间
+const free = await store.info.getStorageFreeSize(); // 剩余空间
+
+// 获取存储驱动信息
+const driver = await JsLiteRest.driver(); // 当前存储驱动
 ```
 
 ### 🛠️ 中间件支持

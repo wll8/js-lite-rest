@@ -20,6 +20,9 @@ async function create(data = {}, opt = {}) {
 
 // 导出 JsLiteRest 对象，包含 create 方法和其他功能
 const JsLiteRest = {
+  async driver(){
+    return localforage.driver()
+  },
   lib: {
     localforage,
   },

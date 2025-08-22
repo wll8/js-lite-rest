@@ -229,13 +229,31 @@ await store.get('users', { _page: 1, _limit: 10 });
 
 // 使用过滤条件
 await store.get('users', { status: 'active', age_gte: 18 });
+
+// 排除多个值（新功能）
+await store.get('users', { role_ne: ['admin', 'guest', 'test'] });
+
+// 获取所有数据（新功能）
+const allData = await store.get(); // 等同于 store.get('') 和 store.get('/')
 ```
 
 ## 下一步
 
+### 基础功能
 - [创建 Store](/api/create-store) - 了解如何创建和配置 Store 实例
 - [CRUD 操作](/api/crud) - 掌握基本的增删改查操作
 - [查询过滤](/api/query) - 学习高级查询功能
+
+### 高级功能
+- [优化数据获取](/api/enhanced-get) - 获取完整数据集的新方法
+- [_ne 数组支持](/api/array-ne-operator) - 使用数组排除多个值
 - [关系操作](/api/relations) - 处理关联数据
+- [嵌套数组](/api/nested-arrays) - 管理数组项中的数组
+
+### 专用模式
+- [KV 模式](/api/kv) - 键值对操作模式
+- [Info API](/api/info) - 获取存储信息和统计数据
+
+### 扩展功能
 - [中间件](/api/middleware) - 扩展功能和自定义逻辑
 

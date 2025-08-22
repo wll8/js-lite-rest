@@ -107,6 +107,13 @@ export class Store {
       delete: (key) => this._kvDelete(key)
     };
 
+    // 初始化 info 模式 API
+    this.info = {
+      getTables: () => this._infoGetTables(),
+      getStorageSize: () => this._infoGetStorageSize(),
+      getStorageFreeSize: () => this._infoGetStorageFreeSize()
+    };
+
     // 初始化数据和适配器
     this._initPromise = this._initialize(data, opt);
   }
@@ -250,6 +257,100 @@ export class Store {
     return deleted;
   }
 
+  // info 模式的辅助方法
+  async _infoGetTables() {
+    await this._ensureInitialized();
+    
+    const data = this.opt.adapter.data;
+    const tables = [];
+    
+    for (const key in data) {
+      if (data.hasOwnProperty(key) && Array.isArray(data[key])) {
+        tables.push(key);
+      }
+    }
+    
+    return tables;
+  }
+
+
+  async _infoGetStorageSize() {
+    await this._ensureInitialized();
+    
+    // 在浏览器环境下，尝试获取更准确的存储大小
+    if (typeof window !== 'undefined') {
+      // 如果有 storage API，尝试获取实际存储使用量
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          return estimate.usage || 0;
+        } catch (error) {
+          // 如果获取失败，继续使用数据大小计算
+        }
+      }
+      
+      // 如果使用 localStorage，计算当前项目的存储大小
+      if (typeof localStorage !== 'undefined' && this.opt.savePath) {
+        try {
+          const storedData = localStorage.getItem(this.opt.savePath);
+          if (storedData) {
+            return new Blob([storedData]).size;
+          }
+        } catch (error) {
+          // 如果获取失败，继续使用数据大小计算
+        }
+      }
+    }
+    
+    // 默认方式：计算内存中数据的 JSON 字符串大小
+    const data = this.opt.adapter.data;
+    const jsonString = JSON.stringify(data);
+    return new Blob([jsonString]).size;
+  }
+
+  async _infoGetStorageFreeSize() {
+    await this._ensureInitialized();
+    
+    // 判断当前环境和存储类型
+    if (typeof window !== 'undefined') {
+      // 浏览器环境
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          return estimate.quota - estimate.usage;
+        } catch (error) {
+          // 如果 API 不可用，返回 -1
+          return -1;
+        }
+      }
+      
+      // 如果没有 storage API，尝试使用传统方法检测 localStorage
+      if (typeof localStorage !== 'undefined') {
+        try {
+          // localStorage 总容量通常是 5-10MB，这里使用通用的 5MB
+          const totalCapacity = 5 * 1024 * 1024; // 5MB in bytes
+          let usedSize = 0;
+          
+          // 计算已使用的 localStorage 空间
+          for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+              usedSize += new Blob([localStorage[key]]).size + key.length;
+            }
+          }
+          
+          return Math.max(0, totalCapacity - usedSize);
+        } catch (error) {
+          return -1;
+        }
+      }
+      
+      return -1;
+    } else {
+      // Node.js 环境，文件存储方式返回 -1
+      return -1;
+    }
+  }
+
   async _request(method, path, ...args) {
     // 确保初始化完成
     await this._ensureInitialized();
@@ -337,7 +438,52 @@ export class JsonAdapter {
 
   parsePath(path) {
     // "book/1" => ['book', '1']
+    // "books[1].comments" => ['books', '[1]', 'comments']
     if (!path) return [];
+    
+    // 处理数组索引语法：books[1].comments
+    if (path.includes('[') && path.includes(']')) {
+      const segments = [];
+      let current = '';
+      let inBrackets = false;
+      
+      for (let i = 0; i < path.length; i++) {
+        const char = path[i];
+        
+        if (char === '[') {
+          if (current) {
+            segments.push(current);
+            current = '';
+          }
+          current = '[';
+          inBrackets = true;
+        } else if (char === ']') {
+          current += ']';
+          segments.push(current);
+          current = '';
+          inBrackets = false;
+        } else if (char === '.' && !inBrackets) {
+          if (current) {
+            segments.push(current);
+            current = '';
+          }
+        } else if (char === '/' && !inBrackets) {
+          if (current) {
+            segments.push(current);
+            current = '';
+          }
+        } else {
+          current += char;
+        }
+      }
+      
+      if (current) {
+        segments.push(current);
+      }
+      
+      return segments.filter(Boolean);
+    }
+    
     return path.split('/').filter(Boolean);
   }
 
@@ -359,10 +505,20 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length; i++) {
-      if (Array.isArray(cur)) {
-        cur = cur.find(item => String(item.id) === segs[i]);
+      const seg = segs[i];
+      
+      // 处理数组索引 [1]
+      if (seg.startsWith('[') && seg.endsWith(']')) {
+        const index = parseInt(seg.slice(1, -1));
+        if (Array.isArray(cur) && index >= 0 && index < cur.length) {
+          cur = cur[index];
+        } else {
+          return null;
+        }
+      } else if (Array.isArray(cur)) {
+        cur = cur.find(item => String(item.id) === seg);
       } else {
-        cur = cur[segs[i]];
+        cur = cur[seg];
       }
       if (cur == null) return null;
     }
@@ -569,8 +725,20 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
-      if (!cur[segs[i]]) cur[segs[i]] = {};
-      cur = cur[segs[i]];
+      const seg = segs[i];
+      
+      // 处理数组索引 [1]
+      if (seg.startsWith('[') && seg.endsWith(']')) {
+        const index = parseInt(seg.slice(1, -1));
+        if (Array.isArray(cur) && index >= 0 && index < cur.length) {
+          cur = cur[index];
+        } else {
+          throw new Error(`数组索引 ${index} 超出范围`);
+        }
+      } else {
+        if (!cur[seg]) cur[seg] = {};
+        cur = cur[seg];
+      }
     }
     const key = segs[segs.length - 1];
     if (!cur[key]) cur[key] = [];
@@ -621,7 +789,19 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
-      cur = cur[segs[i]];
+      const seg = segs[i];
+      
+      // 处理数组索引 [1]
+      if (seg.startsWith('[') && seg.endsWith(']')) {
+        const index = parseInt(seg.slice(1, -1));
+        if (Array.isArray(cur) && index >= 0 && index < cur.length) {
+          cur = cur[index];
+        } else {
+          return null;
+        }
+      } else {
+        cur = cur[seg];
+      }
       if (cur == null) return null;
     }
     const key = segs[segs.length - 1];
@@ -667,7 +847,19 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
-      cur = cur[segs[i]];
+      const seg = segs[i];
+      
+      // 处理数组索引 [1]
+      if (seg.startsWith('[') && seg.endsWith(']')) {
+        const index = parseInt(seg.slice(1, -1));
+        if (Array.isArray(cur) && index >= 0 && index < cur.length) {
+          cur = cur[index];
+        } else {
+          return null;
+        }
+      } else {
+        cur = cur[seg];
+      }
       if (cur == null) return null;
     }
     const key = segs[segs.length - 1];
@@ -719,7 +911,19 @@ export class JsonAdapter {
     }
     let cur = this.data;
     for (let i = 0; i < segs.length - 1; i++) {
-      cur = cur[segs[i]];
+      const seg = segs[i];
+      
+      // 处理数组索引 [1]
+      if (seg.startsWith('[') && seg.endsWith(']')) {
+        const index = parseInt(seg.slice(1, -1));
+        if (Array.isArray(cur) && index >= 0 && index < cur.length) {
+          cur = cur[index];
+        } else {
+          return null;
+        }
+      } else {
+        cur = cur[seg];
+      }
       if (cur == null) return null;
     }
     const key = segs[segs.length - 1];

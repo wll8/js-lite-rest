@@ -1937,6 +1937,321 @@ export function testMain(JsLiteRest, opt = {}) {
       expect(books[1].title).to.equal('js');
     });
   });
+
+  // 新增测试：info 模式 API
+  describe('info 模式 API', () => {
+    let store;
+    
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        books: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' }
+        ],
+        users: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ],
+        config: {
+          theme: 'dark',
+          language: 'zh'
+        },
+        tags: []
+      }, {
+        savePath: `test_info_mode_${Date.now()}`
+      });
+    });
+
+    afterEach(async () => {
+      await cleanStorageData(store.opt.savePath);
+    });
+
+    it('info.getTables() 应该返回所有数组类型的表名', async () => {
+      const tables = await store.info.getTables();
+      expect(tables).to.be.an('array');
+      expect(tables).to.include('books');
+      expect(tables).to.include('users');
+      expect(tables).to.include('tags');
+      expect(tables).to.not.include('config'); // config 不是数组类型
+      expect(tables.length).to.equal(3);
+    });
+
+
+    it('info.getStorageSize() 应该返回存储空间占用大小', async () => {
+      const storageSize = await store.info.getStorageSize();
+      expect(storageSize).to.be.a('number');
+      expect(storageSize).to.be.greaterThan(0);
+      
+      // 添加一些数据后，存储大小应该增加
+      const initialSize = storageSize;
+      await store.post('books', { title: 'html', content: 'HTML is a markup language for creating web pages' });
+      
+      const newSize = await store.info.getStorageSize();
+      expect(newSize).to.be.greaterThan(initialSize);
+    });
+
+    it('info.getStorageFreeSize() 应该返回剩余存储空间', async () => {
+      const freeSize = await store.info.getStorageFreeSize();
+      expect(freeSize).to.be.a('number');
+      
+      if (typeof window === 'undefined') {
+        // Node.js 环境 (file 模式) 应该返回 -1
+        expect(freeSize).to.equal(-1);
+      } else {
+        // 浏览器环境，应该是正数或 -1 (如果无法检测)
+        expect(freeSize >= -1).to.be.true;
+      }
+    });
+
+    it('JsLiteRest.driver() 应该返回当前的存储驱动程序', async () => {
+      const driver = await JsLiteRest.driver();
+      expect(driver).to.be.a('string');
+      
+      if (typeof window === 'undefined') {
+        // Node.js 环境应该返回 'file'
+        expect(driver).to.equal('file');
+      } else {
+        // 浏览器环境应该返回 localforage 的 driver 名称
+        expect(driver).to.be.oneOf(['asyncStorage', 'webSQLStorage', 'localStorageWrapper']);
+      }
+    });
+
+    it('info APIs 在空数据存储中的行为', async () => {
+      const emptyStore = await JsLiteRest.create({}, {
+        savePath: `test_empty_info_${Date.now()}`
+      });
+
+      try {
+        const tables = await emptyStore.info.getTables();
+        expect(tables).to.be.an('array');
+        expect(tables.length).to.equal(0);
+
+        const storageSize = await emptyStore.info.getStorageSize();
+        expect(storageSize).to.be.a('number');
+        expect(storageSize).to.be.greaterThanOrEqual(0);
+
+        const freeSize = await emptyStore.info.getStorageFreeSize();
+        expect(freeSize).to.be.a('number');
+      } finally {
+        await cleanStorageData(emptyStore.opt.savePath);
+      }
+    });
+
+    it('info APIs 在混合数据类型中的行为', async () => {
+      const mixedStore = await JsLiteRest.create({
+        arrayTable: [{ id: 1, name: 'item1' }],
+        objectData: { key: 'value' },
+        stringData: 'hello',
+        numberData: 42,
+        booleanData: true,
+        nullData: null,
+        emptyArray: []
+      }, {
+        savePath: `test_mixed_info_${Date.now()}`
+      });
+
+      try {
+        const tables = await mixedStore.info.getTables();
+        expect(tables).to.be.an('array');
+        expect(tables).to.include('arrayTable');
+        expect(tables).to.include('emptyArray');
+        expect(tables).to.not.include('objectData');
+        expect(tables).to.not.include('stringData');
+        expect(tables).to.not.include('numberData');
+        expect(tables).to.not.include('booleanData');
+        expect(tables).to.not.include('nullData');
+        expect(tables.length).to.equal(2);
+      } finally {
+        await cleanStorageData(mixedStore.opt.savePath);
+      }
+    });
+  });
+
+  // 新增测试：数组项中数组的管理
+  describe('数组项中数组的管理', () => {
+    let store;
+    
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        books: [
+          { 
+            id: 1, 
+            title: 'JavaScript权威指南',
+            comments: [
+              { id: 1, content: '很好的书', author: 'Alice' },
+              { id: 2, content: '推荐阅读', author: 'Bob' }
+            ]
+          },
+          { 
+            id: 2, 
+            title: 'CSS揭秘',
+            comments: [
+              { id: 3, content: '很实用', author: 'Charlie' }
+            ]
+          },
+          {
+            id: 3,
+            title: 'HTML5权威指南',
+            comments: []
+          }
+        ]
+      }, {
+        savePath: `test_array_item_array_${Date.now()}`
+      });
+    });
+
+    afterEach(async () => {
+      await cleanStorageData(store.opt.savePath);
+    });
+
+    it('get books[0].comments 应该获取第1本书的所有评论', async () => {
+      const comments = await store.get('books[0].comments');
+      expect(comments).to.be.an('array');
+      expect(comments.length).to.equal(2);
+      expect(comments[0].content).to.equal('很好的书');
+      expect(comments[1].content).to.equal('推荐阅读');
+    });
+
+    it('get books[1].comments 应该获取第2本书的所有评论', async () => {
+      const comments = await store.get('books[1].comments');
+      expect(comments).to.be.an('array');
+      expect(comments.length).to.equal(1);
+      expect(comments[0].content).to.equal('很实用');
+    });
+
+    it('get books[2].comments 应该获取空评论数组', async () => {
+      const comments = await store.get('books[2].comments');
+      expect(comments).to.be.an('array');
+      expect(comments.length).to.equal(0);
+    });
+
+    it('get books[0].comments 支持查询参数过滤', async () => {
+      const comments = await store.get('books[0].comments', { author: 'Alice' });
+      expect(comments).to.be.an('array');
+      expect(comments.length).to.equal(1);
+      expect(comments[0].content).to.equal('很好的书');
+      expect(comments[0].author).to.equal('Alice');
+    });
+
+    it('post books[0].comments 应该在第1本书中添加评论', async () => {
+      const newComment = { content: '非常棒!', author: 'David' };
+      const result = await store.post('books[0].comments', newComment);
+      
+      expect(result).to.be.an('object');
+      expect(result.content).to.equal('非常棒!');
+      expect(result.author).to.equal('David');
+      expect(result.id).to.be.a('string');
+
+      // 验证评论确实被添加
+      const comments = await store.get('books[0].comments');
+      expect(comments.length).to.equal(3);
+      expect(comments[2].content).to.equal('非常棒!');
+    });
+
+    it('post books[2].comments 应该在空评论数组中添加评论', async () => {
+      const newComment = { content: '第一条评论', author: 'Eve' };
+      const result = await store.post('books[2].comments', newComment);
+      
+      expect(result.content).to.equal('第一条评论');
+      expect(result.author).to.equal('Eve');
+
+      const comments = await store.get('books[2].comments');
+      expect(comments.length).to.equal(1);
+      expect(comments[0].content).to.equal('第一条评论');
+    });
+
+    it('put books[0].comments/1 应该更新第1本书的指定评论', async () => {
+      const updatedComment = { content: '更新后的评论', author: 'Alice-Updated' };
+      const result = await store.put('books[0].comments/1', updatedComment);
+      
+      expect(result.content).to.equal('更新后的评论');
+      expect(result.author).to.equal('Alice-Updated');
+      expect(result.id).to.equal(1);
+
+      // 验证评论确实被更新
+      const comments = await store.get('books[0].comments');
+      expect(comments[0].content).to.equal('更新后的评论');
+      expect(comments[0].author).to.equal('Alice-Updated');
+    });
+
+    it('patch books[0].comments/2 应该部分更新第1本书的指定评论', async () => {
+      const patchData = { author: 'Bob-Patched' };
+      const result = await store.patch('books[0].comments/2', patchData);
+      
+      expect(result.content).to.equal('推荐阅读'); // 内容保持不变
+      expect(result.author).to.equal('Bob-Patched'); // 作者被更新
+      expect(result.id).to.equal(2);
+
+      // 验证评论确实被部分更新
+      const comments = await store.get('books[0].comments');
+      expect(comments[1].content).to.equal('推荐阅读');
+      expect(comments[1].author).to.equal('Bob-Patched');
+    });
+
+    it('delete books[0].comments/1 应该删除第1本书的指定评论', async () => {
+      const deletedComment = await store.delete('books[0].comments/1');
+      
+      expect(deletedComment).to.be.an('object');
+      expect(deletedComment.id).to.equal(1);
+      expect(deletedComment.content).to.equal('很好的书');
+
+      // 验证评论确实被删除
+      const comments = await store.get('books[0].comments');
+      expect(comments.length).to.equal(1);
+      expect(comments[0].id).to.equal(2);
+      expect(comments[0].content).to.equal('推荐阅读');
+    });
+
+    it('get books[999].comments 应该抛出错误 (索引超出范围)', async () => {
+      try {
+        await store.get('books[999].comments');
+        expect.fail('应该抛出错误');
+      } catch (error) {
+        expect(error.code).to.equal(500);
+        expect(error.success).to.equal(false);
+        expect(error.message).to.include('未找到');
+      }
+    });
+
+    it('post books[999].comments 应该抛出错误 (索引超出范围)', async () => {
+      try {
+        await store.post('books[999].comments', { content: 'test' });
+        expect.fail('应该抛出错误');
+      } catch (error) {
+        expect(error.message).to.include('数组索引');
+        expect(error.message).to.include('超出范围');
+      }
+    });
+
+    it('深层嵌套：books[0].comments 的分页和排序', async () => {
+      // 先添加更多评论用于测试
+      await store.post('books[0].comments', { content: 'comment3', author: 'Charlie', rating: 3 });
+      await store.post('books[0].comments', { content: 'comment1', author: 'Alice2', rating: 5 });
+      await store.post('books[0].comments', { content: 'comment2', author: 'Bob2', rating: 4 });
+
+      // 测试排序 - 按内容升序排列（所有评论现在包括原有的 + 新添加的）
+      const sortedComments = await store.get('books[0].comments', { 
+        _sort: 'content', 
+        _order: 'asc' 
+      });
+      expect(sortedComments.length).to.equal(5);
+      
+      // 验证排序功能正常工作 - 检查新添加的评论是否正确排序
+      const newComments = sortedComments.filter(c => c.content.startsWith('comment'));
+      expect(newComments.length).to.equal(3);
+      expect(newComments[0].content).to.equal('comment1');
+      expect(newComments[1].content).to.equal('comment2');
+      expect(newComments[2].content).to.equal('comment3');
+
+      // 测试分页
+      const pagedComments = await store.get('books[0].comments', { 
+        _page: 1, 
+        _limit: 2 
+      });
+      expect(pagedComments.count).to.equal(5);
+      expect(pagedComments.list.length).to.equal(2);
+    });
+  });
 }
 
 export async function testNodeStoreBasic(JsLiteRest) {
