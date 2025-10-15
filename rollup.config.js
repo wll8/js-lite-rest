@@ -10,7 +10,6 @@ export default defineConfig([
     output: [
       { file: 'dist/index.js', format: 'esm', inlineDynamicImports: true },
     ],
-    external: ['fs', 'fs/promises', 'localforage'],
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',
@@ -27,9 +26,8 @@ export default defineConfig([
   {
     input: 'src/index.ts',
     output: [
-      { file: 'dist/js-lite-rest.esm.js', format: 'esm', sourcemap: true, inlineDynamicImports: true },
+      { file: 'dist/js-lite-rest.mjs', format: 'esm', sourcemap: true, inlineDynamicImports: true },
     ],
-    external: ['fs', 'fs/promises', 'localforage'],
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',
@@ -45,9 +43,8 @@ export default defineConfig([
   {
     input: 'src/index.ts',
     output: [
-      { file: 'dist/js-lite-rest.cjs.js', format: 'cjs', sourcemap: true, inlineDynamicImports: true, exports: 'named' },
+      { file: 'dist/js-lite-rest.cjs', format: 'cjs', sourcemap: true, inlineDynamicImports: true, exports: 'default' },
     ],
-    external: ['fs', 'fs/promises', 'localforage'],
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',

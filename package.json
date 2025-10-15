@@ -3,15 +3,15 @@
   "version": "0.0.3",
   "description": "纯前端 RESTful 风格增删改查。",
   "type": "module",
-  "main": "dist/js-lite-rest.cjs.js",
-  "module": "dist/js-lite-rest.esm.js",
+  "main": "dist/js-lite-rest.cjs",
+  "module": "dist/js-lite-rest.mjs",
   "browser": "dist/js-lite-rest.umd.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/js-lite-rest.esm.js",
-      "require": "./dist/js-lite-rest.cjs.js",
+      "import": "./dist/js-lite-rest.mjs",
+      "require": "./dist/js-lite-rest.cjs",
       "browser": "./dist/js-lite-rest.umd.js"
     }
   },

@@ -1,6 +1,3 @@
-// 统一入口文件 - 自动检测环境并使用相应实现
-export * from './store';
-
 // 检测环境并动态选择实现
 async function getJsLiteRest() {
   if (typeof window === 'undefined') {
@@ -46,13 +43,3 @@ const JsLiteRest = {
 
 export default JsLiteRest;
 
-// 导出便利函数
-export async function createNodeStore(data?: any, options?: import('./store').StoreOptions) {
-  const nodeModule = await import('./store.node');
-  return nodeModule.default.create(data, options);
-}
-
-export async function createBrowserStore(data?: any, options?: import('./store').StoreOptions) {
-  const browserModule = await import('./store.browser');
-  return browserModule.default.create(data, options);
-}
