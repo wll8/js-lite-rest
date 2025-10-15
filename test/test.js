@@ -52,8 +52,8 @@ if (mode === 'dev') {
   }
 } else if (mode === 'build') {
   if (env === 'node') {
-    await envMap[env]('../dist/js-lite-rest.node.esm.js')
+    await envMap[env]('../dist/js-lite-rest.mjs')
   } else if (env === 'browser') {
-    await envMap[env]('../dist/js-lite-rest.browser.esm.js')
+    await envMap[env]('../dist/js-lite-rest.browser.mjs')
   }
 } 

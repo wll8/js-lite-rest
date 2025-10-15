@@ -1,4 +1,4 @@
-import { Store, StoreOptions, DataSchema, interceptor } from './store';
+// 使用动态导入避免循环依赖
 
 // 检测环境并动态选择实现
 async function getJsLiteRest() {
@@ -20,12 +20,12 @@ const JsLiteRest = {
     return impl.driver();
   },
 
-  async create<T extends DataSchema = DataSchema>(
+  async create<T extends import('./store').DataSchema = import('./store').DataSchema>(
     data?: T,
-    options?: StoreOptions
-  ): Promise<Store<T>> {
+    options?: import('./store').StoreOptions
+  ) {
     const impl = await getJsLiteRest();
-    return impl.create(data, options) as Promise<Store<T>>;
+    return impl.create(data, options);
   },
 
   // 暴露 Store 类和拦截器（通过 getter 实现延迟加载）
@@ -34,7 +34,7 @@ const JsLiteRest = {
   },
 
   get interceptor() {
-    return Promise.resolve(interceptor);
+    return import('./store').then(m => m.interceptor);
   },
 
   // 浏览器环境下的额外属性（延迟加载）

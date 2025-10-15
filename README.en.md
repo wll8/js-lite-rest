@@ -3,10 +3,7 @@
 [![npm version](https://badge.fury.io/js/js-lite-rest.svg)](https://badge.fury.io/js/js-lite-rest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight frontend RESTful CRUD libra// Use custom adapter
-const store = await JsLiteRest.create(null, {
-  adapter: new CustomAdapter({ /* config */ })
-});or standalone applications and prototype development. Complete data CRUD operations without backend server.
+A lightweight frontend RESTful CRUD library for standalone applications and prototype development. Complete data CRUD operations without backend server.
 
 **📚 [Documentation](https://wll8.github.io/js-lite-rest/) | 🎮 [Live Demo](https://wll8.github.io/js-lite-rest/html-demo/)**
 
@@ -40,14 +37,37 @@ pnpm add js-lite-rest
 ### CDN Import
 
 ```html
-<!-- ES Module -->
+<!-- ES Module (Browser version with built-in localforage) -->
 <script type="module">
-  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.mjs';
+  const store = await JsLiteRest.create();
 </script>
 
-<!-- UMD (Global Variable) -->
-<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+<!-- UMD (Global Variable, self-contained, no extra dependencies) -->
+<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
+<script>
+  // Use global variable JsLiteRest
+  const store = await JsLiteRest.create();
+</script>
 ```
+
+## 📚 Multi-Environment Support
+
+js-lite-rest provides multiple build formats for seamless usage across different environments:
+
+| Environment | Format | File | Usage |
+|-------------|--------|------|-------|
+| Node.js | CommonJS | `js-lite-rest.cjs` | `require('js-lite-rest')` |
+| Node.js | ES Module | `js-lite-rest.mjs` | `import JsLiteRest from 'js-lite-rest'` |
+| Browser | ES Module | `js-lite-rest.browser.mjs` | `import JsLiteRest from '...'` |
+| Browser | UMD | `js-lite-rest.umd.js` | `<script src="...">` |
+
+**Automatic Environment Detection**: When using `import` or `require`, the appropriate build file is automatically selected based on the environment.
+
+**Browser Environment Features**:
+- ✅ Browser version includes built-in [localforage](https://localforage.github.io/localForage/), supporting IndexedDB, WebSQL, localStorage
+- ✅ Automatically selects the best storage solution for larger storage capacity
+- ✅ Access underlying storage API via `JsLiteRest.lib.localforage`
 
 ## 🚀 Quick Start
 
@@ -93,23 +113,28 @@ await store.delete('books/2');
 <html>
 <head>
   <title>js-lite-rest Example</title>
-  <script type="module">
-    import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  <!-- Use UMD version, self-contained with no extra dependencies -->
+  <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
+  <script>
+    async function demo() {
+      // Use localStorage storage in browser
+      const store = await JsLiteRest.create();
 
-    // Use localStorage storage in browser
-    const store = await JsLiteRest.create();
+      // Add user data
+      await store.post('users', { name: 'Alice', email: 'alice@example.com' });
+      await store.post('users', { name: 'Bob', email: 'bob@example.com' });
 
-    // Add user data
-    await store.post('users', { name: 'Alice', email: 'alice@example.com' });
-    await store.post('users', { name: 'Bob', email: 'bob@example.com' });
+      // Query all users
+      const users = await store.get('users');
+      console.log('All users:', users);
 
-    // Query all users
-    const users = await store.get('users');
-    console.log('All users:', users);
+      // Query specific user
+      const user = await store.get('users/1');
+      console.log('User 1:', user);
+    }
 
-    // Query specific user
-    const user = await store.get('users/1');
-    console.log('User 1:', user);
+    // Execute after page load
+    document.addEventListener('DOMContentLoaded', demo);
   </script>
 </head>
 <body>
@@ -307,10 +332,18 @@ console.log(comments); // Returns all comments with postId 1
 pnpm install
 
 # Run tests
-pnpm test
+pnpm test                    # Node.js environment dev test
+pnpm test:dev:browser        # Browser environment dev test
+pnpm test:build              # Node.js environment build test
+pnpm test:build:browser      # Browser environment build test
 
 # Build project
 pnpm build
+
+# Multi-environment import tests
+node test/import-tests/test-cjs.cjs        # CommonJS test
+node test/import-tests/test-esm.mjs        # ES Module test
+node test/import-tests/server.mjs          # Start browser test server
 
 # Develop documentation
 pnpm docs:dev
@@ -318,6 +351,15 @@ pnpm docs:dev
 # Build documentation
 pnpm docs:build
 ```
+
+### Test Coverage
+
+The project includes a comprehensive test suite covering all environments and formats:
+- ✅ **121 functional tests**: Covering all CRUD operations, middleware, interceptors, etc.
+- ✅ **4 environment tests**: Node.js (CJS/ESM) + Browser (ESM/UMD)
+- ✅ **32 import tests**: Validating various use cases
+
+See [`test/import-tests/README.md`](./test/import-tests/README.md) for details
 
 ### Tech Stack
 

@@ -37,14 +37,37 @@ pnpm add js-lite-rest
 ### CDN 引入
 
 ```html
-<!-- ES Module -->
+<!-- ES Module (浏览器专用版本，包含 localforage) -->
 <script type="module">
-  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.mjs';
+  const store = await JsLiteRest.create();
 </script>
 
 <!-- UMD (全局变量，自包含，无需额外依赖) -->
 <script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
+<script>
+  // 使用全局变量 JsLiteRest
+  const store = await JsLiteRest.create();
+</script>
 ```
+
+## 📚 多环境支持
+
+js-lite-rest 提供了多种构建格式，可在不同环境中无缝使用：
+
+| 环境 | 格式 | 文件 | 使用方式 |
+|------|------|------|----------|
+| Node.js | CommonJS | `js-lite-rest.cjs` | `require('js-lite-rest')` |
+| Node.js | ES Module | `js-lite-rest.mjs` | `import JsLiteRest from 'js-lite-rest'` |
+| 浏览器 | ES Module | `js-lite-rest.browser.mjs` | `import JsLiteRest from '...'` |
+| 浏览器 | UMD | `js-lite-rest.umd.js` | `<script src="...">` |
+
+**自动环境检测**：当使用 `import` 或 `require` 导入时，会自动根据环境选择合适的构建文件。
+
+**浏览器环境特性**：
+- ✅ 浏览器版本内置 [localforage](https://localforage.github.io/localForage/)，支持 IndexedDB、WebSQL、localStorage
+- ✅ 自动选择最佳存储方案，提供更大的存储空间
+- ✅ 通过 `JsLiteRest.lib.localforage` 访问底层存储 API
 
 ## 🚀 快速开始
 
@@ -310,10 +333,18 @@ console.log(comments); // 返回 postId 为 1 的所有评论
 pnpm install
 
 # 运行测试
-pnpm test
+pnpm test                    # Node.js 环境开发测试
+pnpm test:dev:browser        # 浏览器环境开发测试
+pnpm test:build              # Node.js 环境构建测试
+pnpm test:build:browser      # 浏览器环境构建测试
 
 # 构建项目
 pnpm build
+
+# 多环境导入测试
+node test/import-tests/test-cjs.cjs        # CommonJS 测试
+node test/import-tests/test-esm.mjs        # ES Module 测试
+node test/import-tests/server.mjs          # 启动浏览器测试服务器
 
 # 开发文档
 pnpm docs:dev
@@ -321,6 +352,15 @@ pnpm docs:dev
 # 构建文档
 pnpm docs:build
 ```
+
+### 测试覆盖
+
+项目包含完整的测试套件，覆盖所有环境和格式：
+- ✅ **121 个功能测试**：涵盖所有 CRUD 操作、中间件、拦截器等
+- ✅ **4 种环境测试**：Node.js (CJS/ESM) + 浏览器 (ESM/UMD)
+- ✅ **32 个导入测试**：验证各种使用场景
+
+详见 [`test/import-tests/README.md`](./test/import-tests/README.md)
 
 ### 技术栈
 

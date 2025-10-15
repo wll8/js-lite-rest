@@ -5,15 +5,20 @@
   "type": "module",
   "main": "dist/js-lite-rest.cjs",
   "module": "dist/js-lite-rest.mjs",
-  "browser": "dist/js-lite-rest.umd.js",
+  "browser": "dist/js-lite-rest.browser.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": {
+        "import": "./dist/js-lite-rest.browser.mjs",
+        "require": "./dist/js-lite-rest.cjs"
+      },
       "import": "./dist/js-lite-rest.mjs",
       "require": "./dist/js-lite-rest.cjs",
-      "browser": "./dist/js-lite-rest.umd.js"
-    }
+      "default": "./dist/js-lite-rest.mjs"
+    },
+    "./umd": "./dist/js-lite-rest.umd.js"
   },
   "files": [
     "dist",

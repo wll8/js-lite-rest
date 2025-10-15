@@ -56,15 +56,38 @@ export default defineConfig([
       commonjs()
     ],
   },
+  // 浏览器 ESM 格式 (用于 ES Module 导入的浏览器环境)
+  {
+    input: 'src/index.browser.ts',
+    output: [
+      {
+        file: 'dist/js-lite-rest.browser.mjs',
+        format: 'esm',
+        sourcemap: true,
+        inlineDynamicImports: true
+      },
+    ],
+    external: [],
+    plugins: [
+      typescript({
+        tsconfig: './tsconfig.json',
+        declaration: false,
+        rootDir: 'src',
+        sourceMap: true
+      }),
+      nodeResolve(),
+      commonjs()
+    ],
+  },
   // UMD 格式 (浏览器 <script> 标签直接使用)
   {
     input: 'src/index.browser.ts',
     output: [
-      { 
-        file: 'dist/js-lite-rest.umd.js', 
-        format: 'umd', 
-        name: 'JsLiteRest', 
-        sourcemap: true, 
+      {
+        file: 'dist/js-lite-rest.umd.js',
+        format: 'umd',
+        name: 'JsLiteRest',
+        sourcemap: true,
         inlineDynamicImports: true,
         exports: 'default'
       },
