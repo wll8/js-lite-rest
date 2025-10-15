@@ -171,7 +171,7 @@ if (deleted) {
 
 ```javascript
 // 按 ID 数组批量删除
-await store.delete('users', ['user1', 'user2', 'user3']);
+await store.delete('users', { id: ['user1', 'user2', 'user3'] });
 ```
 
 ## 嵌套资源操作
@@ -221,15 +221,6 @@ console.log(updated.name); // 'New Name'
 
 // DELETE 操作返回被删除的数据或 null
 const deleted = await store.delete('users/user1');
-```
-
-### 错误处理
-```
-const updated = await store.put('users/1', { name: 'New Name' });
-console.log(updated.name); // 'New Name'
-
-// DELETE 操作返回被删除的数据或 null
-const deleted = await store.delete('users/1');
 ```
 
 ### 错误处理

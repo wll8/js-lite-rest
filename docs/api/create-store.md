@@ -162,6 +162,8 @@ const store = await JsLiteRest.create('./existing-data.json');
 import JsLiteRest from 'js-lite-rest';
 
 // 使用默认存储键名
+// 注意:浏览器环境下会自动使用 localforage (优先 IndexedDB)
+// 并自动应用 lite 拦截器，直接返回数据而非 HTTP 响应对象
 const store = await JsLiteRest.create();
 
 // 使用自定义存储键名
@@ -175,6 +177,12 @@ const store = await JsLiteRest.create({
   users: []
 });
 ```
+
+**浏览器环境特性**：
+- 自动使用 [localforage](https://localforage.github.io/localForage/) 存储，优先选择 IndexedDB
+- 自动应用 `lite` 拦截器，API 返回直接数据而非 HTTP 风格响应对象
+- 可通过 `JsLiteRest.lib.localforage` 访问底层存储 API
+- 可通过 `JsLiteRest.driver()` 查看当前使用的存储驱动
 
 ### 自定义适配器
 

@@ -109,7 +109,7 @@ const JsLiteRest = require('js-lite-rest');
 
 ```html
 <!-- UMD 版本，直接通过 script 标签引入 -->
-<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.umd.js"></script>
+<script src="https://unpkg.com/js-lite-rest/dist/js-lite-rest.umd.js"></script>
 <script>
   // 使用全局变量 JsLiteRest
   const store = await JsLiteRest.create();
@@ -117,7 +117,7 @@ const JsLiteRest = require('js-lite-rest');
 
 <!-- ES Module 版本 -->
 <script type="module">
-  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.esm.js';
+  import JsLiteRest from 'https://unpkg.com/js-lite-rest/dist/js-lite-rest.browser.mjs';
   const store = await JsLiteRest.create();
 </script>
 ```

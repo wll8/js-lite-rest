@@ -43,7 +43,7 @@ await store.delete('users/1');                    // 删除用户
 <body>
     <script>
         async function main() {
-            // 在浏览器中使用 localStorage 存储
+            // 在浏览器中使用 localforage 存储（优先 IndexedDB）
             const store = await JsLiteRest.create();
             
             // 添加数据

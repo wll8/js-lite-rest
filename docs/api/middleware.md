@@ -82,17 +82,25 @@ js-lite-rest 提供了一些内置的拦截器，可以直接使用：
 
 `lite` 拦截器将 HTTP 风格的响应对象转换为纯数据格式，简化使用。
 
+**注意**:
+- **浏览器环境**: 通过 `js-lite-rest/browser` 创建的 store 会自动应用 `lite` 拦截器
+- **Node.js 环境**: 通过 `js-lite-rest` 或 `js-lite-rest/node` 创建的 store 也会自动应用 `lite` 拦截器
+- 如果使用底层的 `Store.create()` 创建实例，则需要手动添加
+
 ```javascript
-import { interceptor } from 'js-lite-rest';
+import JsLiteRest from 'js-lite-rest';
 
+// 推荐: 使用 JsLiteRest.create() 会自动应用 lite 拦截器
 const store = await JsLiteRest.create();
-
-// 使用 lite 拦截器
-store.use(interceptor.lite);
 
 // 现在所有操作都会返回纯数据，而不是包含 success、code 等字段的响应对象
 const users = await store.get('users'); // 直接返回用户数组
 const newUser = await store.post('users', { name: 'Alice' }); // 直接返回新创建的用户对象
+
+// 如果使用底层 Store 类，需要手动添加 lite 拦截器
+import { Store, interceptor } from 'js-lite-rest';
+const storeManual = await Store.create({});
+storeManual.use(interceptor.lite);
 ```
 
 **作用对比**:

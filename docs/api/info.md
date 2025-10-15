@@ -193,11 +193,14 @@ console.log(driver);
 
 **不同环境下的返回值**:
 
-- **Node.js 环境**: 返回 `'file'`
-- **浏览器环境**: 返回 localforage 的当前驱动程序名称，可能的值包括：
-  - `'asyncStorage'` - IndexedDB 存储（localforage 的默认首选驱动）
-  - `'webSQLStorage'` - WebSQL 存储（已废弃，但某些旧浏览器仍支持）
-  - `'localStorageWrapper'` - localStorage 存储的包装器
+- **Node.js 环境**:
+  - 通过 `js-lite-rest` 或 `js-lite-rest/node` 导入时，返回 `'file'`
+
+- **浏览器环境**:
+  - 通过 `js-lite-rest/browser` 导入时，返回 localforage 的当前驱动程序名称，可能的值包括：
+    - `'asyncStorage'` - IndexedDB 存储（localforage 的默认首选驱动）
+    - `'webSQLStorage'` - WebSQL 存储（已废弃，但某些旧浏览器仍支持）
+    - `'localStorageWrapper'` - localStorage 存储的包装器
 
 **示例**:
 

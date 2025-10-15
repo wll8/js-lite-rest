@@ -18,6 +18,18 @@
       "require": "./dist/js-lite-rest.cjs",
       "default": "./dist/js-lite-rest.mjs"
     },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/js-lite-rest.browser.mjs",
+      "require": "./dist/js-lite-rest.cjs",
+      "default": "./dist/js-lite-rest.browser.mjs"
+    },
+    "./node": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/js-lite-rest.mjs",
+      "require": "./dist/js-lite-rest.cjs",
+      "default": "./dist/js-lite-rest.mjs"
+    },
     "./umd": "./dist/js-lite-rest.umd.js"
   },
   "files": [
