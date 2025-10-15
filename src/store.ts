@@ -1,4 +1,60 @@
 // TypeScript interfaces
+
+// 基础数据类型，支持索引签名
+export interface DataSchema {
+  [key: string]: any;
+}
+
+// 查询参数类型定义
+export interface QueryParams {
+  // 分页
+  _page?: number | string;
+  _limit?: number | string;
+  
+  // 排序
+  _sort?: string | string[];
+  _order?: string | string[];
+  
+  // 截取
+  _start?: number | string;
+  _end?: number | string;
+  
+  // 关联
+  _embed?: string | string[];
+  _expand?: string | string[];
+  
+  // 全文搜索
+  _q?: string;
+  
+  // 基础过滤和运算符
+  [key: string]: any;
+}
+
+// 分页响应类型
+export interface PaginatedResponse<T> {
+  count: number;
+  list: T[];
+}
+
+// HTTP 状态码类型
+export interface HttpStatus {
+  code: number;
+  message: string;
+}
+
+// API 响应类型
+export interface ApiResponse<T = any> {
+  code: number;
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+// 错误响应类型
+export interface ApiErrorResponse extends ApiResponse<null> {
+  success: false;
+}
+
 export interface StoreOptions {
   idKeySuffix?: string;
   savePath?: string;
@@ -8,43 +64,87 @@ export interface StoreOptions {
   adapter?: Adapter;
 }
 
-export interface Adapter {
-  data: any;
-  get(path: string, query?: any): Promise<any>;
+export interface Adapter<T = any> {
+  data: T;
+  get(path: string, query?: QueryParams): Promise<any>;
   post(path: string, data?: any): Promise<any>;
   put(path: string, data?: any): Promise<any>;
-  delete(path: string, query?: any): Promise<any>;
+  delete(path: string, query?: QueryParams): Promise<any>;
   patch(path: string, data?: any): Promise<any>;
   head?(path: string): Promise<any>;
   options?(path: string): Promise<any>;
   save(): Promise<void>;
 }
 
-interface HttpStatus {
-  code: number;
-  message: string;
+export interface KVApi {
+  get<T = any>(key: string, defaultValue?: T): Promise<T>;
+  set<T = any>(key: string, value: T): Promise<T>;
+  delete<T = any>(key: string): Promise<T>;
 }
 
-interface ApiResponse {
-  code: number;
-  success: boolean;
-  data: any;
-  message?: string;
-}
-
-interface KVApi {
-  get(key: string, defaultValue?: any): Promise<any>;
-  set(key: string, value: any): Promise<any>;
-  delete(key: string): Promise<any>;
-}
-
-interface InfoApi {
+export interface InfoApi {
   getTables(): Promise<string[]>;
   getStorageSize(): Promise<number>;
   getStorageFreeSize(): Promise<number>;
 }
 
-export type MiddlewareFunction = (args: any[], next: () => Promise<any>, opt: StoreOptions) => Promise<any>;
+export type MiddlewareFunction<T = any> = (
+  args: any[],
+  next: () => Promise<any>,
+  opt: StoreOptions
+) => Promise<any>;
+
+// 实体类型，带有 id 字段
+export interface Entity {
+  id: string | number;
+}
+
+// 表类型，包含实体的数组
+export type Table<T extends Entity = Entity> = T[];
+
+// 数据库模式类型，映射表名到表
+export type DatabaseSchema<T extends DataSchema = DataSchema> = {
+  [K in keyof T]: T[K] extends Entity[] ? T[K] : T[K];
+};
+
+// 查询结果类型
+export type QueryResult<T> = T[] | PaginatedResponse<T> | T | null;
+
+// CRUD 操作的返回类型
+export type CreateResult<T> = T;
+export type ReadResult<T> = QueryResult<T>;
+export type UpdateResult<T> = T;
+export type DeleteResult<T> = T;
+
+// 批量操作结果类型
+export interface BatchResult<T> {
+  data: (T | null)[];
+  error: (string | null)[];
+}
+
+// 路径类型，用于类型安全的路径访问
+export type Path<T> = string & { __pathBrand: T };
+
+// 表名类型
+export type TableNames<T extends DataSchema> = keyof T;
+
+// 字段名类型
+export type FieldNames<T> = keyof T;
+
+// 排序方向类型
+export type SortDirection = 'asc' | 'desc';
+
+// 排序配置类型
+export interface SortConfig {
+  field: string;
+  direction: SortDirection;
+}
+
+// 分页配置类型
+export interface PaginationConfig {
+  page: number;
+  limit: number;
+}
 
 function genId(): string {
   const currentId = getTimestampPlusId();
@@ -134,15 +234,24 @@ function compose(middlewares: MiddlewareFunction[], core: MiddlewareFunction, op
   };
 }
 
-export class Store {
+export class Store<T extends DataSchema = DataSchema> {
   opt: StoreOptions;
-  middlewares: MiddlewareFunction[];
+  middlewares: MiddlewareFunction<T>[];
   methods: string[];
   kv: KVApi;
   info: InfoApi;
-  private _initPromise: Promise<Store> | null;
+  private _initPromise: Promise<Store<T>> | null;
 
-  constructor(data: any = {}, opt: Partial<StoreOptions> = {}) {
+  // HTTP 方法的类型声明
+  get!: (path?: string, query?: QueryParams) => Promise<any>;
+  post!: (path: string, data?: any) => Promise<any>;
+  put!: (path: string, data?: any) => Promise<any>;
+  delete!: (path: string, query?: QueryParams) => Promise<any>;
+  patch!: (path: string, data?: any) => Promise<any>;
+  head?: (path: string) => Promise<any>;
+  options?: (path: string) => Promise<any>;
+
+  constructor(data: T = {} as T, opt: Partial<StoreOptions> = {}) {
     this.opt = getBaseOpt(opt);
     this.middlewares = [];
 
@@ -156,9 +265,9 @@ export class Store {
 
     // 初始化 kv 模式 API
     this.kv = {
-      get: (key: string, defaultValue?: any) => this._kvGet(key, defaultValue),
-      set: (key: string, value: any) => this._kvSet(key, value),
-      delete: (key: string) => this._kvDelete(key)
+      get: <K = any>(key: string, defaultValue?: K) => this._kvGet(key, defaultValue),
+      set: <K = any>(key: string, value: K) => this._kvSet(key, value),
+      delete: <K = any>(key: string) => this._kvDelete(key)
     };
 
     // 初始化 info 模式 API
@@ -173,13 +282,16 @@ export class Store {
   }
 
   // 静态方法用于异步创建 Store 实例
-  static async create(data: any = {}, opt: Partial<StoreOptions> = {}): Promise<Store> {
-    const store = new Store(data, opt);
+  static async create<T extends DataSchema = DataSchema>(
+    data: T = {} as T,
+    opt: Partial<StoreOptions> = {}
+  ): Promise<Store<T>> {
+    const store = new Store<T>(data, opt);
     await store._ensureInitialized();
     return store;
   }
 
-  async _initialize(data: any = {}, opt: Partial<StoreOptions> = {}): Promise<Store> {
+  async _initialize(data: T = {} as T, opt: Partial<StoreOptions> = {}): Promise<Store<T>> {
     let shouldSaveInitialData = false;
     let finalData = data;
 
@@ -211,7 +323,7 @@ export class Store {
 
     // 即使是直接传入数据对象，也要等待一个微任务，确保初始化的一致性
     await Promise.resolve();
-    this.opt.adapter = this.opt.adapter || new JsonAdapter(finalData, this.opt);
+    this.opt.adapter = this.opt.adapter || new JsonAdapter<T>(finalData as T, this.opt);
 
     // 如果传入的是数据对象且有 save 函数，进行初始保存
     if (shouldSaveInitialData && this.opt.save && this.opt.savePath) {
@@ -247,7 +359,7 @@ export class Store {
     return result;
   }
 
-  use(middleware: MiddlewareFunction): Store {
+  use(middleware: MiddlewareFunction<T>): Store<T> {
     // 只支持函数格式的中间件：function(args, next, opt) { ... }
     // 如果拦截器中抛出错误，会进入 .catch 中处理
     if (typeof middleware === 'function') {
@@ -473,11 +585,11 @@ export class Store {
 }
 
 // 简单的 json 适配器，支持内存、localStorage、Node 文件
-export class JsonAdapter implements Adapter {
+export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T> {
   opt: StoreOptions;
-  data: any;
+  data: T;
 
-  constructor(data: any = {}, opt: StoreOptions = {}) {
+  constructor(data: T = {} as T, opt: StoreOptions = {}) {
     this.opt = opt;
     this.data = data;
   }
@@ -584,7 +696,7 @@ export class JsonAdapter implements Adapter {
       let filteredData = cur;
       let isSingleObject = false;
       if (filteredData && !Array.isArray(filteredData)) {
-        filteredData = [filteredData];
+        filteredData = [filteredData] as any;
         isSingleObject = true;
       }
       // 全文检索
@@ -716,7 +828,7 @@ export class JsonAdapter implements Adapter {
           filteredData = {
             count: totalCount,
             list: paginatedData
-          };
+          } as any;
         }
       }
       // 还原单对象
@@ -792,13 +904,13 @@ export class JsonAdapter implements Adapter {
           throw new Error(`数组索引 ${index} 超出范围`);
         }
       } else {
-        if (!cur[seg]) cur[seg] = {};
-        cur = cur[seg];
+        if (!cur[seg]) (cur as any)[seg] = {};
+        cur = (cur as any)[seg];
       }
     }
     const key = segs[segs.length - 1];
-    if (!cur[key]) cur[key] = [];
-    if (!Array.isArray(cur[key])) throw new Error('只能向数组添加');
+    if (!cur[key]) (cur as any)[key] = [];
+    if (!Array.isArray((cur as any)[key])) throw new Error('只能向数组添加');
     data.id = genId();
     cur[key].push(data);
     await this.save();

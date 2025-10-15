@@ -1,3 +1,5 @@
+import { Store, StoreOptions, DataSchema, interceptor } from './store';
+
 // 检测环境并动态选择实现
 async function getJsLiteRest() {
   if (typeof window === 'undefined') {
@@ -18,9 +20,12 @@ const JsLiteRest = {
     return impl.driver();
   },
 
-  async create(data?: any, options?: import('./store').StoreOptions) {
+  async create<T extends DataSchema = DataSchema>(
+    data?: T,
+    options?: StoreOptions
+  ): Promise<Store<T>> {
     const impl = await getJsLiteRest();
-    return impl.create(data, options);
+    return impl.create(data, options) as Promise<Store<T>>;
   },
 
   // 暴露 Store 类和拦截器（通过 getter 实现延迟加载）
@@ -29,7 +34,7 @@ const JsLiteRest = {
   },
 
   get interceptor() {
-    return import('./store').then(m => m.interceptor);
+    return Promise.resolve(interceptor);
   },
 
   // 浏览器环境下的额外属性（延迟加载）
@@ -42,4 +47,19 @@ const JsLiteRest = {
 };
 
 export default JsLiteRest;
+
+// 导出类型，方便用户使用
+export type {
+  DataSchema,
+  Store,
+  StoreOptions,
+  QueryParams,
+  Entity,
+  Table,
+  DatabaseSchema,
+  ApiResponse,
+  PaginatedResponse,
+  MiddlewareFunction,
+  interceptor
+} from './store';
 

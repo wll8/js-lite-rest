@@ -1,4 +1,4 @@
-import { Store, interceptor, StoreOptions } from './store';
+import { Store, interceptor, StoreOptions, DataSchema } from './store';
 import localforage from 'localforage';
 
 async function load(key: string): Promise<any> {
@@ -11,9 +11,12 @@ async function save(key: string, data: any): Promise<void> {
 }
 
 // 创建函数
-async function create(data: any = {}, opt: Partial<StoreOptions> = {}): Promise<Store> {
+async function create<T extends DataSchema = DataSchema>(
+  data: T = {} as T,
+  opt: Partial<StoreOptions> = {}
+): Promise<Store<T>> {
   const mergedOpt = { load, save, ...opt };
-  const store = await Store.create(data, mergedOpt);
+  const store = await Store.create<T>(data, mergedOpt);
   store.use(interceptor.lite);
   return store;
 }
