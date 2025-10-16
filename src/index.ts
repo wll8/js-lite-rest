@@ -21,8 +21,8 @@ const JsLiteRest = {
   },
 
   async create<T extends import('./store').DataSchema = import('./store').DataSchema>(
-    data?: T,
-    options?: import('./store').StoreOptions
+    data?: T | string,
+    options?: Partial<import('./store').StoreOptions>
   ) {
     const impl = await getJsLiteRest();
     return impl.create(data, options);

@@ -251,7 +251,7 @@ export class Store<T extends DataSchema = DataSchema> {
   head?: (path: string) => Promise<any>;
   options?: (path: string) => Promise<any>;
 
-  constructor(data: T = {} as T, opt: Partial<StoreOptions> = {}) {
+  constructor(data: T | string = {} as T, opt: Partial<StoreOptions> = {}) {
     this.opt = getBaseOpt(opt);
     this.middlewares = [];
 
@@ -283,7 +283,7 @@ export class Store<T extends DataSchema = DataSchema> {
 
   // 静态方法用于异步创建 Store 实例
   static async create<T extends DataSchema = DataSchema>(
-    data: T = {} as T,
+    data: T | string = {} as T,
     opt: Partial<StoreOptions> = {}
   ): Promise<Store<T>> {
     const store = new Store<T>(data, opt);
@@ -291,7 +291,7 @@ export class Store<T extends DataSchema = DataSchema> {
     return store;
   }
 
-  async _initialize(data: T = {} as T, opt: Partial<StoreOptions> = {}): Promise<Store<T>> {
+  async _initialize(data: T | string = {} as T, opt: Partial<StoreOptions> = {}): Promise<Store<T>> {
     let shouldSaveInitialData = false;
     let finalData = data;
 
