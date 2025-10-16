@@ -1,6 +1,6 @@
 {
   "name": "js-lite-rest",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "纯前端 RESTful 风格增删改查。",
   "type": "module",
   "main": "dist/js-lite-rest.cjs",
