@@ -53,9 +53,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --no-optional=false
           # 确保 Rollup 原生模块正确安装
           pnpm rebuild rollup
+          pnpm add @esbuild/win32-x64 --save-dev --ignore-workspace
+          pnpm rebuild esbuild
 
       - name: Build library
         run: pnpm build
