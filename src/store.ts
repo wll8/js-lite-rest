@@ -699,6 +699,12 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
         filteredData = [filteredData] as any;
         isSingleObject = true;
       }
+
+      // 如果有 _expand 或 _embed 参数，创建数据副本以避免修改原始数据
+      const needsDataCopy = _embed || _expand;
+      if (needsDataCopy && filteredData) {
+        filteredData = JSON.parse(JSON.stringify(filteredData));
+      }
       // 全文检索
       if (typeof filterQuery._q === 'string' && filterQuery._q.length > 0) {
         const q = filterQuery._q.toLowerCase();
