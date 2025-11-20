@@ -340,11 +340,6 @@ pnpm test:build:browser      # Browser environment build test
 # Build project
 pnpm build
 
-# Multi-environment import tests
-node test/import-tests/test-cjs.cjs        # CommonJS test
-node test/import-tests/test-esm.mjs        # ES Module test
-node test/import-tests/server.mjs          # Start browser test server
-
 # Develop documentation
 pnpm docs:dev
 
@@ -358,8 +353,6 @@ The project includes a comprehensive test suite covering all environments and fo
 - ✅ **121 functional tests**: Covering all CRUD operations, middleware, interceptors, etc.
 - ✅ **4 environment tests**: Node.js (CJS/ESM) + Browser (ESM/UMD)
 - ✅ **32 import tests**: Validating various use cases
-
-See [`test/import-tests/README.md`](./test/import-tests/README.md) for details
 
 ### Tech Stack
 

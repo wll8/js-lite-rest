@@ -1,0 +1,274 @@
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
+function fn({ JsLiteRest }) {
+  describe('拦截器功能', () => {
+    let store;
+
+    beforeEach(async () => {
+      store = await JsLiteRest.create({
+        book: [
+          { id: 1, title: 'css' },
+          { id: 2, title: 'js' },
+        ],
+      });
+    });
+
+    it('前置拦截器 - 修改请求参数', async () => {
+      const requestLog = [];
+      
+      store.use(async (args, next) => {
+        requestLog.push({ type: 'before', args: [...args] });
+        // 修改查询参数
+        if (args[0] === 'get' && args[1] === 'book') {
+          args[2] = { title: 'css' }; // 强制查询 css
+        }
+        const result = await next(args);
+        requestLog.push({ type: 'after', result });
+        return result;
+      });
+
+      const books = await store.get('book');
+      
+      expect(requestLog).to.have.length(2);
+      expect(requestLog[0].type).to.equal('before');
+      expect(requestLog[1].type).to.equal('after');
+      expect(books.length).to.equal(1);
+      expect(books[0].title).to.equal('css');
+    });
+
+    it('中间件执行顺序', async () => {
+      const executionLog = [];
+      
+      store.use(async (args, next) => {
+        executionLog.push('1');
+        const result = await next(args);
+        executionLog.push(`4`);
+        return {use: 1, result};
+      });
+      
+      store.use(async (args, next) => {
+        executionLog.push('2');
+        const result = await next(args);
+        executionLog.push(`3`);
+        return {use: 2, result};
+      });
+
+      const res = await store.get('book');
+      expect(executionLog.join(``)).to.equal(`1234`)
+      && expect(res.use).to.equal(1)
+      && expect(res.result.use).to.equal(2);
+    });
+
+    it('后置拦截器 - 修改响应数据', async () => {
+      store.use(async (args, next) => {
+        const result = await next(args);
+        // 为所有书籍添加时间戳
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(book => ({ ...book, timestamp: Date.now() }))
+          };
+        }
+        return result;
+      });
+
+      const books = await store.get('book');
+      
+      expect(books.length).to.equal(2);
+      expect(books[0]).to.have.property('timestamp');
+      expect(books[1]).to.have.property('timestamp');
+    });
+
+    it('多个拦截器 - 链式处理与数据传递', async () => {
+      store.use(async (args, next) => {
+        // 添加标记1
+        const result = await next(args);
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(item => ({ ...item, tag1: true }))
+          };
+        }
+        return result;
+      });
+
+      store.use(async (args, next) => {
+        // 添加标记2
+        const result = await next(args);
+        if (result && result.data && Array.isArray(result.data)) {
+          return {
+            ...result,
+            data: result.data.map(item => ({ ...item, tag2: true }))
+          };
+        }
+        return result;
+      });
+
+      const books = await store.get('book');
+      expect(books.length).to.equal(2);
+      expect(books[0]).to.have.property('tag1', true);
+      expect(books[0]).to.have.property('tag2', true);
+      expect(books[1]).to.have.property('tag1', true);
+      expect(books[1]).to.have.property('tag2', true);
+    });
+
+    it('拦截器中断链后，后续拦截器不会执行', async () => {
+      let secondCalled = false;
+
+      store.use(async (args, next) => {
+        // 不调用 next，直接返回
+        return [{ id: 999, title: 'fake' }];
+      });
+
+      store.use(async (args, next) => {
+        secondCalled = true;
+        return await next(args);
+      });
+
+      const books = await store.get('book');
+      expect(books).to.deep.equal([{ id: 999, title: 'fake' }]);
+      expect(secondCalled).to.equal(false);
+    });
+
+    it('拦截器错误处理', async () => {
+      let errorCaught = false;
+      
+      store.use(async (args, next) => {
+        try {
+          const result = await next(args);
+          return result;
+        } catch (error) {
+          errorCaught = true;
+          throw error;
+        }
+      });
+
+      store.use(async (args, next) => {
+        if (args[0] === 'get') {
+          throw new Error('模拟拦截器错误');
+        }
+        return await next(args);
+      });
+
+      try {
+        await store.get('book');
+      } catch (error) {
+        expect(error.message).to.equal('模拟拦截器错误');
+        expect(errorCaught).to.equal(true);
+      }
+    });
+
+    it('拦截器阻止请求', async () => {
+      store.use(async (args, next) => {
+        if (args[0] === 'delete') {
+          // 阻止删除操作
+          return { blocked: true, message: '删除操作被拦截' };
+        }
+        return await next(args);
+      });
+
+      const result = await store.delete('book/1');
+      
+      expect(result.blocked).to.equal(true);
+      expect(result.message).to.equal('删除操作被拦截');
+      
+      // 验证数据没有被删除
+      const books = await store.get('book');
+      expect(books.length).to.equal(2);
+    });
+
+    it('拦截器修改 POST 数据', async () => {
+      store.use(async (args, next) => {
+        if (args[0] === 'post') {
+          // 为所有新增的数据添加创建时间
+          args[2] = { ...args[2], createdAt: new Date().toISOString() };
+        }
+        return await next(args);
+      });
+
+      const newBook = { title: 'vue' };
+      const result = await store.post('book', newBook);
+      
+      expect(result).to.have.property('createdAt');
+      expect(result.title).to.equal('vue');
+      
+      const books = await store.get('book');
+      expect(books.length).to.equal(3);
+    });
+
+    it('拦截器验证数据', async () => {
+      store.use(async (args, next) => {
+        if (args[0] === 'post' || args[0] === 'put') {
+          const data = args[2];
+          if (!data.title || data.title.length < 2) {
+            throw new Error('标题长度必须大于2个字符');
+          }
+        }
+        return await next(args);
+      });
+
+      // 测试有效数据
+      const validBook = { title: 'react' };
+      await expect(store.post('book', validBook)).to.be.fulfilled;
+
+      // 测试无效数据
+      const invalidBook = { title: 'a' };
+      await expect(store.post('book', invalidBook)).to.be.rejectedWith('标题长度必须大于2个字符');
+    });
+
+    it('拦截器添加认证信息', async () => {
+      store.use(async (args, next, opt) => {
+        // 模拟添加认证头
+        opt.headers = opt.headers || {};
+        opt.headers['Authorization'] = 'Bearer token123';
+        return await next(args);
+      });
+
+      store.use(async (args, next, opt) => {
+        // 验证认证信息
+        expect(opt.headers['Authorization']).to.equal('Bearer token123');
+        return await next(args);
+      });
+
+      await store.get('book');
+    });
+
+    it('拦截器缓存机制', async () => {
+      const cache = new Map();
+      
+      store.use(async (args, next) => {
+        const cacheKey = JSON.stringify(args);
+        
+        if (args[0] === 'get' && cache.has(cacheKey)) {
+          return cache.get(cacheKey);
+        }
+        
+        const result = await next(args);
+        
+        if (args[0] === 'get') {
+          cache.set(cacheKey, result);
+        }
+        
+        return result;
+      });
+
+      // 第一次请求
+      const books1 = await store.get('book');
+      expect(books1.length).to.equal(2);
+      
+      // 第二次请求应该从缓存返回
+      const books2 = await store.get('book');
+      expect(books2).to.equal(books1); // 应该是同一个引用
+      
+      // 修改数据后缓存应该失效
+      await store.post('book', { title: 'angular' });
+      const books3 = await store.get('book');
+      expect(books3.length).to.equal(3);
+    });
+  });
+}
+
+export default fn;

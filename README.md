@@ -341,11 +341,6 @@ pnpm test:build:browser      # 浏览器环境构建测试
 # 构建项目
 pnpm build
 
-# 多环境导入测试
-node test/import-tests/test-cjs.cjs        # CommonJS 测试
-node test/import-tests/test-esm.mjs        # ES Module 测试
-node test/import-tests/server.mjs          # 启动浏览器测试服务器
-
 # 开发文档
 pnpm docs:dev
 
@@ -359,8 +354,6 @@ pnpm docs:build
 - ✅ **121 个功能测试**：涵盖所有 CRUD 操作、中间件、拦截器等
 - ✅ **4 种环境测试**：Node.js (CJS/ESM) + 浏览器 (ESM/UMD)
 - ✅ **32 个导入测试**：验证各种使用场景
-
-详见 [`test/import-tests/README.md`](./test/import-tests/README.md)
 
 ### 技术栈
 
