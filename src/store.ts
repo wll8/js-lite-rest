@@ -148,7 +148,9 @@ export interface PaginationConfig {
 
 function genId(): string {
   const currentId = getTimestampPlusId();
-  return currentId.toString(36).toUpperCase();
+  // 追加 4 位 36 进制随机分量，避免跨进程同一毫秒内生成重复 ID
+  const random = Math.floor(Math.random() * 36 ** 4).toString(36).padStart(4, '0');
+  return `${currentId.toString(36).toUpperCase()}${random.toUpperCase()}`;
 }
 
 function getTimestampPlusId(start: number = +new Date(2025, 4, 5)): number {
@@ -183,7 +185,7 @@ const HTTP_STATUS: Record<string, HttpStatus> = {
   CREATED: { code: 201, message: '已创建' },
   NO_CONTENT: { code: 204, message: '无内容' },
   BAD_REQUEST: { code: 400, message: '请求无效' },
-  SEE_OTHER: { code: 303, message: '部分成功' },
+  MULTI_STATUS: { code: 207, message: '部分成功' },
   NOT_FOUND: { code: 404, message: '未找到' },
   INTERNAL_SERVER_ERROR: { code: 500, message: '服务器内部错误' }
 };
@@ -379,7 +381,9 @@ export class Store<T extends DataSchema = DataSchema> {
     };
     
     const value = getDeepValue(this.opt.adapter!.data, key);
-    return value !== undefined ? value : defaultValue;
+    if (value === undefined) return defaultValue;
+    // 返回深拷贝，与 get 保持一致，避免修改返回值污染库数据
+    return JSON.parse(JSON.stringify(value));
   }
 
   async _kvSet(key: string, value: any): Promise<any> {
@@ -537,8 +541,8 @@ export class Store<T extends DataSchema = DataSchema> {
             const errors = result.error;
             const hasErrors = Array.isArray(errors) && errors.some((err: any) => err !== null);
             if (hasErrors) {
-              // 有错误时，返回失败状态，状态码303，包含数据和错误
-              return Promise.reject(createErrorResponse(HTTP_STATUS.SEE_OTHER, errors, result.data));
+              // 有错误时，返回失败状态，状态码207（Multi-Status，批量部分成功），包含数据和错误
+              return Promise.reject(createErrorResponse(HTTP_STATUS.MULTI_STATUS, errors, result.data));
             } else {
               // 全部成功
               const statusCode = method.toLowerCase() === 'post' ? HTTP_STATUS.CREATED : HTTP_STATUS.OK;
@@ -655,7 +659,14 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     return path.split('/').filter(Boolean);
   }
 
+  // 对外出口：返回深拷贝，避免调用方修改查询结果污染库数据
   async get(path: string, query?: any): Promise<any> {
+    const result = await this.getRaw(path, query);
+    if (result == null) return result;
+    return JSON.parse(JSON.stringify(result));
+  }
+
+  async getRaw(path: string, query?: any): Promise<any> {
     const segs = this.parsePath(path);
     
     // 如果 path 为空、undefined 或只有 /，返回所有数据

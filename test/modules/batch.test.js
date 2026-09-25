@@ -31,7 +31,7 @@ function fn({ JsLiteRest }) {
         ...[...new Array(1000)].map((item, index) => ({index})),
       ];
       const err = await store.post('posts', arr).catch(err => err)
-      expect(err.code).to.equal(303);
+      expect(err.code).to.equal(207);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
       expect(err.data.length).to.equal(arr.length);
@@ -59,7 +59,7 @@ function fn({ JsLiteRest }) {
         { title: 'fail' },
       ];
       const err = await store.put('posts', arr).catch(err => err);
-      expect(err.code).to.equal(303);
+      expect(err.code).to.equal(207);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
       expect(err.data.length).to.equal(3);
@@ -88,7 +88,7 @@ function fn({ JsLiteRest }) {
         { title: 'fail' },
       ];
       const err = await store.patch('posts', arr).catch(err => err);
-      expect(err.code).to.equal(303);
+      expect(err.code).to.equal(207);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
       expect(err.data.length).to.equal(3);

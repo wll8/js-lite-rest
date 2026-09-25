@@ -23,6 +23,7 @@ import optimization from './modules/optimization.test.js';
 import features from './modules/features.test.js';
 import arrayItems from './modules/array-items.test.js';
 import persistence from './modules/persistence.test.js';
+import immutability from './modules/immutability.test.js';
 
 export function testMain(JsLiteRest, opt = {}) {
   if (opt.afterEach) {
@@ -94,6 +95,7 @@ export function testMain(JsLiteRest, opt = {}) {
   features({ JsLiteRest, cleanStorageData });
   arrayItems({ JsLiteRest, cleanStorageData });
   persistence({ JsLiteRest, cleanStorageData });
+  immutability({ JsLiteRest, cleanStorageData });
 }
 
 export async function testNodeStoreBasic(JsLiteRest) {

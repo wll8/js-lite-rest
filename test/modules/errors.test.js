@@ -101,7 +101,7 @@ function fn({ JsLiteRest }) {
         { title: 'another valid book' }
       ]).catch(err => err);
       
-      expect(err.code).to.equal(303);
+      expect(err.code).to.equal(207);
       expect(err.success).to.equal(false);
       expect(Array.isArray(err.data)).to.equal(true);
       expect(Array.isArray(err.message)).to.equal(true);

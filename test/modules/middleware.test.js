@@ -258,15 +258,21 @@ function fn({ JsLiteRest }) {
       // 第一次请求
       const books1 = await store.get('book');
       expect(books1.length).to.equal(2);
-      
+
       // 第二次请求应该从缓存返回
       const books2 = await store.get('book');
       expect(books2).to.equal(books1); // 应该是同一个引用
-      
-      // 修改数据后缓存应该失效
+
+      // 写操作不会自动失效缓存，此时仍返回缓存中的旧数据
       await store.post('book', { title: 'angular' });
       const books3 = await store.get('book');
-      expect(books3.length).to.equal(3);
+      expect(books3.length).to.equal(2);
+      expect(books3).to.equal(books1);
+
+      // 需手动清理缓存后才能读到新数据
+      cache.clear();
+      const books4 = await store.get('book');
+      expect(books4.length).to.equal(3);
     });
   });
 }
