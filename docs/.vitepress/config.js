@@ -42,6 +42,7 @@ export default defineConfig({
             { text: '查询过滤', link: '/api/query' },
             { text: '关系操作', link: '/api/relations' },
             { text: '中间件', link: '/api/middleware' },
+            { text: '多标签页同步', link: '/api/sync' },
           ]
         }
       ],

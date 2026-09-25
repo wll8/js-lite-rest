@@ -16,9 +16,31 @@ async function create<T extends DataSchema = DataSchema>(
   opt: Partial<StoreOptions> = {}
 ): Promise<Store<T>> {
   const mergedOpt = { load, save, ...opt };
+
+  // 多标签页同步：写操作完成后广播变更，其他标签页收到后重读存储
+  let channel: BroadcastChannel | null = null;
+  if (typeof BroadcastChannel !== 'undefined') {
+    channel = new BroadcastChannel('js-lite-rest');
+    const originSave = mergedOpt.save;
+    mergedOpt.save = async (key: string, d: any) => {
+      await originSave(key, d);
+      channel!.postMessage({ type: 'change', key });
+    };
+  }
+
   // 暂时使用 any 兼容 Store.create 的现有签名，稍后会在 Store 中同步更新联合类型
   const store = await Store.create<T>(data as any, mergedOpt);
   store.use(interceptor.lite);
+
+  if (channel) {
+    channel.onmessage = (event) => {
+      const msg = event.data;
+      if (msg?.type === 'change' && msg.key === store.opt.savePath) {
+        store._syncFromExternal();
+      }
+    };
+  }
+
   return store;
 }
 

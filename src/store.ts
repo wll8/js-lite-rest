@@ -74,6 +74,8 @@ export interface Adapter<T = any> {
   head?(path: string): Promise<any>;
   options?(path: string): Promise<any>;
   save(): Promise<void>;
+  // 写操作前从存储重读最新数据，避免多标签页/多进程并发写入时丢失更新
+  reload?(): Promise<void>;
 }
 
 export interface KVApi {
@@ -243,6 +245,7 @@ export class Store<T extends DataSchema = DataSchema> {
   kv: KVApi;
   info: InfoApi;
   private _initPromise: Promise<Store<T>> | null;
+  private _changeListeners: Array<(info?: { source: string }) => void>;
 
   // HTTP 方法的类型声明
   get!: (path?: string, query?: QueryParams) => Promise<any>;
@@ -256,6 +259,7 @@ export class Store<T extends DataSchema = DataSchema> {
   constructor(data: T | string = {} as T, opt: Partial<StoreOptions> = {}) {
     this.opt = getBaseOpt(opt);
     this.middlewares = [];
+    this._changeListeners = [];
 
     // 定义支持的 HTTP 方法映射
     this.methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -372,6 +376,37 @@ export class Store<T extends DataSchema = DataSchema> {
     return this;
   }
 
+  // 监听外部数据变更（如其他标签页写入存储），返回取消监听函数
+  onChange(callback: (info?: { source: string }) => void): () => void {
+    if (typeof callback !== 'function') {
+      throw new Error('onChange 参数必须是一个函数');
+    }
+    this._changeListeners.push(callback);
+    return () => {
+      const index = this._changeListeners.indexOf(callback);
+      if (index > -1) {
+        this._changeListeners.splice(index, 1);
+      }
+    };
+  }
+
+  // 外部数据变更后刷新内存副本并通知监听器（供多标签页同步机制调用）
+  async _syncFromExternal(): Promise<boolean> {
+    await this._ensureInitialized();
+    const adapter = this.opt.adapter as any;
+    if (typeof adapter?.reload !== 'function') return false;
+    await adapter.reload();
+    const info = { source: 'external' };
+    this._changeListeners.forEach((callback) => {
+      try {
+        callback(info);
+      } catch {
+        // 单个监听器异常不影响其他监听器
+      }
+    });
+    return true;
+  }
+
   // kv 模式的辅助方法
   async _kvGet(key: string, defaultValue?: any): Promise<any> {
     await this._ensureInitialized();
@@ -388,7 +423,8 @@ export class Store<T extends DataSchema = DataSchema> {
 
   async _kvSet(key: string, value: any): Promise<any> {
     await this._ensureInitialized();
-    
+    await (this.opt.adapter as any)?.reload?.();
+
     const setDeepValue = (obj: any, path: string, val: any): void => {
       const keys = path.split('.');
       const lastKey = keys.pop()!;
@@ -408,7 +444,8 @@ export class Store<T extends DataSchema = DataSchema> {
 
   async _kvDelete(key: string): Promise<any> {
     await this._ensureInitialized();
-    
+    await (this.opt.adapter as any)?.reload?.();
+
     const deleteDeepValue = (obj: any, path: string): any => {
       const keys = path.split('.');
       const lastKey = keys.pop()!;
@@ -533,6 +570,11 @@ export class Store<T extends DataSchema = DataSchema> {
           throw createErrorResponse(HTTP_STATUS.BAD_REQUEST, `不支持的 HTTP 方法: ${method}`);
         }
 
+        // 写操作前重读最新数据，避免多标签页/多进程下覆盖外部修改
+        if (['post', 'put', 'patch', 'delete'].includes(method)) {
+          await (this.opt.adapter as any)?.reload?.();
+        }
+
         // 动态调用适配器方法
         if (typeof (this.opt.adapter as any)[method] === 'function') {
           const result = await (this.opt.adapter as any)[method](path, ...restArgs);
@@ -605,6 +647,19 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
   async save(): Promise<void> {
     if (this.opt.save) {
       await this.opt.save(this.opt.savePath!, this.data);
+    }
+  }
+
+  // 写前重读：从存储加载最新数据替换内存副本，避免覆盖其他标签页/进程的修改
+  async reload(): Promise<void> {
+    if (!this.opt.load || !this.opt.savePath) return;
+    try {
+      const latest = await this.opt.load(this.opt.savePath);
+      if (latest != null && typeof latest === 'object') {
+        this.data = latest;
+      }
+    } catch {
+      // 存储不可读时保留当前内存数据，不中断写操作
     }
   }
 

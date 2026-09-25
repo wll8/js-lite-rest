@@ -20,6 +20,7 @@
 - ⚡ **异步操作**：所有操作都是异步的，性能更好
 - 🔗 **关联查询**：支持嵌套资源和关联数据查询
 - 📝 **批量操作**：支持批量增删改查操作
+- 🔀 **多标签页同步**：写前重读 + BroadcastChannel 广播，多标签页操作不丢失数据
 
 ## 📦 安装
 
@@ -318,6 +319,24 @@ const store = await JsLiteRest.create({
 const comments = await store.get('posts/1/comments');
 console.log(comments); // 返回 postId 为 1 的所有评论
 ```
+
+### 多标签页同步
+
+浏览器中多个标签页操作同一份数据时，库会自动在写操作前重读存储（防止覆盖其他标签页的修改），并通过 BroadcastChannel 通知其他标签页刷新。可通过 `onChange` 监听外部变更：
+
+```js
+const store = await JsLiteRest.create();
+
+// 其他标签页写入数据时触发，适合在此刷新界面
+const unsubscribe = store.onChange((info) => {
+  console.log('数据已被其他标签页更新', info); // { source: 'external' }
+});
+
+// 不再需要监听时调用
+unsubscribe();
+```
+
+Node.js 环境下写前重读同样生效，可避免多进程写入同一 JSON 文件时互相覆盖。详见[文档：多标签页同步](https://wll8.github.io/js-lite-rest/api/sync)。
 
 ## 🛠️ 开发
 
