@@ -1,49 +1,25 @@
-// 使用动态导入避免循环依赖
+// Node.js 入口：构建为 dist/js-lite-rest.mjs / .cjs
+// 浏览器请使用 browser 条件导出的 dist/js-lite-rest.browser.mjs 或 UMD 版本，
+// 因此本入口静态引入 Node 实现（文件存储），不打包浏览器实现（localforage）。
+// Store / interceptor / JsonAdapter 与运行环境无关，统一以同步形态导出。
+import { Store, interceptor, JsonAdapter, DataSchema, StoreOptions } from './store';
+import nodeImpl from './store.node';
 
-// 检测环境并动态选择实现
-async function getJsLiteRest() {
-  if (typeof window === 'undefined') {
-    // Node.js 环境
-    const nodeModule = await import('./store.node');
-    return nodeModule.default;
-  } else {
-    // 浏览器环境
-    const browserModule = await import('./store.browser');
-    return browserModule.default;
-  }
-}
-
-// 创建延迟加载的 JsLiteRest 对象
 const JsLiteRest = {
   async driver() {
-    const impl = await getJsLiteRest();
-    return impl.driver();
+    return nodeImpl.driver();
   },
 
-  async create<T extends import('./store').DataSchema = import('./store').DataSchema>(
+  async create<T extends DataSchema = DataSchema>(
     data?: T | string,
-    options?: Partial<import('./store').StoreOptions>
+    options?: Partial<StoreOptions>
   ) {
-    const impl = await getJsLiteRest();
-    return impl.create(data, options);
+    return nodeImpl.create<T>(data, options);
   },
 
-  // 暴露 Store 类和拦截器（通过 getter 实现延迟加载）
-  get Store() {
-    return import('./store').then(m => m.Store);
-  },
-
-  get interceptor() {
-    return import('./store').then(m => m.interceptor);
-  },
-
-  // 浏览器环境下的额外属性（延迟加载）
-  get lib() {
-    if (typeof window !== 'undefined') {
-      return getJsLiteRest().then(impl => (impl as any).lib);
-    }
-    return undefined;
-  }
+  Store,
+  interceptor,
+  JsonAdapter
 };
 
 export default JsLiteRest;
@@ -59,7 +35,5 @@ export type {
   DatabaseSchema,
   ApiResponse,
   PaginatedResponse,
-  MiddlewareFunction,
-  interceptor
+  MiddlewareFunction
 } from './store';
-

@@ -9,7 +9,7 @@ const JsLiteRest = {
   },
 
   async create<T extends DataSchema = DataSchema>(
-    data?: T,
+    data?: T | string,
     options?: StoreOptions
   ) {
     return await browserImpl.create<T>(data, options);
@@ -23,14 +23,6 @@ const JsLiteRest = {
   // 浏览器环境下的额外属性
   get lib() {
     return (browserImpl as any).lib;
-  },
-
-  // 导出便利函数
-  createBrowserStore: async function<T extends DataSchema = DataSchema>(
-    data?: T,
-    options?: StoreOptions
-  ) {
-    return await browserImpl.create<T>(data, options);
   }
 };
 

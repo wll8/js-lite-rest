@@ -1,4 +1,4 @@
-import { Store, interceptor, StoreOptions, DataSchema } from './store';
+import { Store, interceptor, JsonAdapter, StoreOptions, DataSchema } from './store';
 import localforage from 'localforage';
 
 async function load(key: string): Promise<any> {
@@ -54,7 +54,8 @@ const JsLiteRest = {
   },
   create,
   Store,
-  interceptor
+  interceptor,
+  JsonAdapter
 };
 
 export default JsLiteRest;

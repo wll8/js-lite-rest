@@ -1,4 +1,4 @@
-import { Store, interceptor, StoreOptions, DataSchema } from './store';
+import { Store, interceptor, JsonAdapter, StoreOptions, DataSchema } from './store';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
 
@@ -33,7 +33,8 @@ const JsLiteRest = {
   },
   create,
   Store,
-  interceptor
+  interceptor,
+  JsonAdapter
 };
 
 export default JsLiteRest;

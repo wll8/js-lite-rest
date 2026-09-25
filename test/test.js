@@ -41,6 +41,11 @@ const envMap = {
       }
     });
     testBrowserStore(JsLiteRest);
+    // UMD 产物测试仅在构建模式运行
+    if (mode === 'build') {
+      const { testUmd } = await import('./modules/umd.test.js');
+      await testUmd();
+    }
   },
 }
 
