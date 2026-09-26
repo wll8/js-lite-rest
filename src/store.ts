@@ -246,6 +246,8 @@ export class Store<T extends DataSchema = DataSchema> {
   info: InfoApi;
   private _initPromise: Promise<Store<T>> | null;
   private _changeListeners: Array<(info?: { source: string }) => void>;
+  // 实例级写队列：串行化所有写操作，避免并发写交错导致丢失更新
+  private _writeQueue: Promise<void>;
 
   // HTTP 方法的类型声明
   get!: (path?: string, query?: QueryParams) => Promise<any>;
@@ -260,6 +262,7 @@ export class Store<T extends DataSchema = DataSchema> {
     this.opt = getBaseOpt(opt);
     this.middlewares = [];
     this._changeListeners = [];
+    this._writeQueue = Promise.resolve();
 
     // 定义支持的 HTTP 方法映射
     this.methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -347,6 +350,16 @@ export class Store<T extends DataSchema = DataSchema> {
     }
   }
 
+  // 将任务加入写队列串行执行：同一实例的写操作按发起顺序依次完成，
+  // 保证"重读→修改→保存"全程不被其他写操作或外部同步打断。
+  // 注意：任务内不要调用本实例的其他写方法（会排队等待自身，造成死锁）。
+  private _enqueue<R>(task: () => Promise<R>): Promise<R> {
+    const run = this._writeQueue.then(task);
+    // 队尾只追踪完成状态：前序任务失败不阻塞后续任务
+    this._writeQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   // 合并数据的辅助方法：existing 数据优先，新数据中不存在的 key 才会被添加
   _mergeData(existingData: any, newData: any): any {
     const result = { ...existingData };
@@ -395,7 +408,8 @@ export class Store<T extends DataSchema = DataSchema> {
     await this._ensureInitialized();
     const adapter = this.opt.adapter as any;
     if (typeof adapter?.reload !== 'function') return false;
-    await adapter.reload();
+    // 重读进入写队列排队执行，避免打断进行中的写操作（如已修改内存但尚未保存）
+    await this._enqueue(() => adapter.reload());
     const info = { source: 'external' };
     this._changeListeners.forEach((callback) => {
       try {
@@ -423,45 +437,49 @@ export class Store<T extends DataSchema = DataSchema> {
 
   async _kvSet(key: string, value: any): Promise<any> {
     await this._ensureInitialized();
-    await (this.opt.adapter as any)?.reload?.();
+    return this._enqueue(async () => {
+      await (this.opt.adapter as any)?.reload?.();
 
-    const setDeepValue = (obj: any, path: string, val: any): void => {
-      const keys = path.split('.');
-      const lastKey = keys.pop()!;
-      const target = keys.reduce((o, k) => {
-        if (!(k in o) || typeof o[k] !== 'object' || o[k] === null) {
-          o[k] = {};
-        }
-        return o[k];
-      }, obj);
-      target[lastKey] = val;
-    };
-    
-    setDeepValue(this.opt.adapter!.data, key, value);
-    await this.opt.adapter!.save();
-    return value;
+      const setDeepValue = (obj: any, path: string, val: any): void => {
+        const keys = path.split('.');
+        const lastKey = keys.pop()!;
+        const target = keys.reduce((o, k) => {
+          if (!(k in o) || typeof o[k] !== 'object' || o[k] === null) {
+            o[k] = {};
+          }
+          return o[k];
+        }, obj);
+        target[lastKey] = val;
+      };
+
+      setDeepValue(this.opt.adapter!.data, key, value);
+      await this.opt.adapter!.save();
+      return value;
+    });
   }
 
   async _kvDelete(key: string): Promise<any> {
     await this._ensureInitialized();
-    await (this.opt.adapter as any)?.reload?.();
+    return this._enqueue(async () => {
+      await (this.opt.adapter as any)?.reload?.();
 
-    const deleteDeepValue = (obj: any, path: string): any => {
-      const keys = path.split('.');
-      const lastKey = keys.pop()!;
-      const target = keys.reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
-      
-      if (target && typeof target === 'object') {
-        const deleted = target[lastKey];
-        delete target[lastKey];
-        return deleted;
-      }
-      return undefined;
-    };
-    
-    const deleted = deleteDeepValue(this.opt.adapter!.data, key);
-    await this.opt.adapter!.save();
-    return deleted;
+      const deleteDeepValue = (obj: any, path: string): any => {
+        const keys = path.split('.');
+        const lastKey = keys.pop()!;
+        const target = keys.reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
+
+        if (target && typeof target === 'object') {
+          const deleted = target[lastKey];
+          delete target[lastKey];
+          return deleted;
+        }
+        return undefined;
+      };
+
+      const deleted = deleteDeepValue(this.opt.adapter!.data, key);
+      await this.opt.adapter!.save();
+      return deleted;
+    });
   }
 
   // info 模式的辅助方法
@@ -619,7 +637,11 @@ export class Store<T extends DataSchema = DataSchema> {
       };
 
       const fn = compose(this.middlewares, core, this.opt);
-      return await fn([method, path, ...args]);
+      const run = () => fn([method, path, ...args]);
+
+      // 写操作进入实例级写队列串行执行：从写前重读到保存全程互斥，避免并发写交错丢失更新
+      const isWrite = ['post', 'put', 'patch', 'delete'].includes(method);
+      return await (isWrite ? this._enqueue(run) : run());
     } catch (error: any) {
       if (error && error.success !== undefined) {
         throw error;

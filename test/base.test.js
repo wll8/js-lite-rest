@@ -25,6 +25,7 @@ import arrayItems from './modules/array-items.test.js';
 import persistence from './modules/persistence.test.js';
 import immutability from './modules/immutability.test.js';
 import sync from './modules/sync.test.js';
+import concurrency from './modules/concurrency.test.js';
 
 export function testMain(JsLiteRest, opt = {}) {
   if (opt.afterEach) {
@@ -98,6 +99,7 @@ export function testMain(JsLiteRest, opt = {}) {
   persistence({ JsLiteRest, cleanStorageData });
   immutability({ JsLiteRest, cleanStorageData });
   sync({ JsLiteRest, cleanStorageData });
+  concurrency({ JsLiteRest, cleanStorageData });
 }
 
 export async function testNodeStoreBasic(JsLiteRest) {
