@@ -163,6 +163,22 @@ function fn({ JsLiteRest, cleanStorageData }) {
         const getRes = await store.get('books');
         expect(getRes.data.length).to.equal(2);
       });
+
+      it('save 后的指纹缓存不漏检外部直写', async () => {
+        const store = await JsLiteRest.create(TEST_KEY);
+        await store.post('books', { title: '本页写入' });
+
+        // 模拟其他标签页直写存储后，本页继续写，外部修改必须保留
+        await applyExternalChange(TEST_KEY, (data) => {
+          data.logs = [{ id: 'ext-1', text: '外部写入' }];
+        });
+
+        await store.post('users', { name: 'Alice' });
+
+        const stored = await readStored(TEST_KEY);
+        expect(stored.logs).to.have.lengthOf(1);
+        expect(stored.users).to.have.lengthOf(1);
+      });
     });
 
     describe('onChange 与变更通知', () => {
