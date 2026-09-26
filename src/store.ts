@@ -717,6 +717,8 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
   // 经 Store 创建后由写队列接管持久化时机（排空时统一 flush）
   _dirty = false;
   _autoPersist = true;
+  // 顶层表 id 索引：表名 -> (String(id) -> 记录引用)；reload 整体失效，惰性重建
+  _idIndex: Map<string, Map<string, any>> = new Map();
 
   constructor(data: T = {} as T, opt: StoreOptions = {}) {
     this.opt = opt;
@@ -725,6 +727,67 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
 
   getRelationKey(table: string): string {
     return table + (this.opt.idKeySuffix || 'Id');
+  }
+
+  // 顶层表的 id 索引：惰性构建，重复 id 取第一个（与 findIndex 语义一致）
+  private getTopIndex(table: string): Map<string, any> | null {
+    const arr = this.data[table];
+    if (!Array.isArray(arr)) return null;
+    let index = this._idIndex.get(table);
+    if (!index) {
+      index = new Map();
+      for (const item of arr) {
+        const key = String(item?.id);
+        if (!index.has(key)) index.set(key, item);
+      }
+      this._idIndex.set(table, index);
+    }
+    return index;
+  }
+
+  // 顶层表按 id 查记录：索引命中 O(1)，非顶层/未建索引回退线性查找
+  private findItemById(table: string, id: string): any {
+    const arr = this.data[table];
+    if (!Array.isArray(arr)) return undefined;
+    const index = this.getTopIndex(table);
+    if (index) {
+      const key = String(id);
+      return index.has(key) ? index.get(key) : undefined;
+    }
+    return arr.find((item: any) => String(item.id) === String(id));
+  }
+
+  // 数组中按 id 定位下标：顶层表走索引（引用反查位置），嵌套数组回退线性查找
+  private findIndexById(table: string, arr: any[], id: any): number {
+    if (arr === this.data[table]) {
+      const index = this.getTopIndex(table);
+      if (index) {
+        const item = index.get(String(id));
+        return item ? arr.indexOf(item) : -1;
+      }
+    }
+    return arr.findIndex((item: any) => String(item.id) === String(id));
+  }
+
+  // 顶层表记录变更后同步索引（未构建时不动作，留待惰性重建）
+  private indexSet(table: string, item: any): void {
+    const index = this._idIndex.get(table);
+    if (index) index.set(String(item?.id), item);
+  }
+
+  // 删除记录后刷新索引键：数组中仍有同 id 记录则重指第一个（与 findIndex 语义一致），否则删键
+  private indexRefresh(table: string, id: any): void {
+    const index = this._idIndex.get(table);
+    if (!index) return;
+    const key = String(id);
+    const arr = this.data[table];
+    if (!Array.isArray(arr)) return;
+    const next = arr.find((item: any) => String(item?.id) === key);
+    if (next !== undefined) {
+      index.set(key, next);
+    } else {
+      index.delete(key);
+    }
   }
 
   async save(): Promise<void> {
@@ -764,6 +827,8 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
       const latest = await this.opt.load(this.opt.savePath);
       if (latest != null && typeof latest === 'object') {
         this.data = latest;
+        // 内存数据整体替换，已构建的 id 索引全部失效
+        this._idIndex.clear();
       }
     } catch {
       // 存储不可读时保留当前内存数据，不中断写操作
@@ -857,7 +922,13 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           return null;
         }
       } else if (Array.isArray(cur)) {
-        cur = cur.find((item: any) => String(item.id) === seg);
+        // 顶层表按 id 走索引，嵌套数组保持线性查找
+        if (cur === this.data[segs[0]]) {
+          const hit = this.findItemById(segs[0], seg);
+          cur = hit === undefined ? null : hit;
+        } else {
+          cur = cur.find((item: any) => String(item.id) === seg);
+        }
       } else {
         cur = cur[seg];
       }
@@ -1040,6 +1111,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           const newItem = { ...item };
           newItem.id = genId();
           arr.push(newItem);
+          this.indexSet(segs[0], newItem);
           results.push(newItem);
           errors.push(null);
         } catch (error: any) {
@@ -1067,6 +1139,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
       const arr = this.data[childTable];
       newData.id = genId();
       arr.push(newData);
+      this.indexSet(segs[2], newData);
       await this.persist();
       return newData;
     }
@@ -1092,6 +1165,8 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray((cur as any)[key])) throw new Error('只能向数组添加');
     data.id = genId();
     cur[key].push(data);
+    // 嵌套数组不维护顶层表索引（cur[key] 与顶层表同名数组为同一引用时才维护）
+    if (cur[key] === this.data[key]) this.indexSet(key, data);
     await this.persist();
     return data;
   }
@@ -1113,7 +1188,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
-        const idx = arr.findIndex((x: any) => String(x.id) === String(item.id));
+        const idx = this.findIndexById(segs[0], arr, item.id);
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${item.id} 的记录`);
@@ -1121,6 +1196,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           continue;
         }
         arr[idx] = { ...arr[idx], ...item };
+        this.indexSet(segs[0], arr[idx]);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1153,9 +1229,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素更新');
-    const idx = cur.findIndex((item: any) => String(item.id) === key);
+    const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
+    // 嵌套数组不维护顶层表索引
+    if (cur === this.data[segs[0]]) this.indexSet(segs[0], cur[idx]);
     await this.persist();
     return cur[idx];
   }
@@ -1171,7 +1249,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
       let hasErrors = false;
 
       for (const id of ids) {
-        const idx = arr.findIndex((item: any) => String(item.id) === String(id));
+        const idx = this.findIndexById(segs[0], arr, id);
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${id} 的记录`);
@@ -1179,6 +1257,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           continue;
         }
         const del = arr.splice(idx, 1)[0];
+        this.indexRefresh(segs[0], del.id);
         results.push(del);
         errors.push(null);
       }
@@ -1211,9 +1290,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素删除');
-    const idx = cur.findIndex((item: any) => String(item.id) === key);
+    const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
     const del = cur.splice(idx, 1)[0];
+    // 嵌套数组不维护顶层表索引
+    if (cur === this.data[segs[0]]) this.indexRefresh(segs[0], del.id);
     await this.persist();
     return del;
   }
@@ -1235,7 +1316,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
-        const idx = arr.findIndex((x: any) => String(x.id) === String(item.id));
+        const idx = this.findIndexById(segs[0], arr, item.id);
         if (idx === -1) {
           results.push(null);
           errors.push(`未找到 id 为 ${item.id} 的记录`);
@@ -1243,6 +1324,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           continue;
         }
         arr[idx] = { ...arr[idx], ...item };
+        this.indexSet(segs[0], arr[idx]);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1275,9 +1357,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     }
     const key = segs[segs.length - 1];
     if (!Array.isArray(cur)) throw new Error('只能对数组元素 patch');
-    const idx = cur.findIndex((item: any) => String(item.id) === key);
+    const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
+    // 嵌套数组不维护顶层表索引
+    if (cur === this.data[segs[0]]) this.indexSet(segs[0], cur[idx]);
     await this.persist();
     return cur[idx];
   }

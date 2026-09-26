@@ -26,6 +26,7 @@ import persistence from './modules/persistence.test.js';
 import immutability from './modules/immutability.test.js';
 import sync from './modules/sync.test.js';
 import concurrency from './modules/concurrency.test.js';
+import perfIndex from './modules/perf-index.test.js';
 
 export function testMain(JsLiteRest, opt = {}) {
   if (opt.afterEach) {
@@ -100,6 +101,7 @@ export function testMain(JsLiteRest, opt = {}) {
   immutability({ JsLiteRest, cleanStorageData });
   sync({ JsLiteRest, cleanStorageData });
   concurrency({ JsLiteRest, cleanStorageData });
+  perfIndex({ JsLiteRest, cleanStorageData });
 }
 
 export async function testNodeStoreBasic(JsLiteRest) {
