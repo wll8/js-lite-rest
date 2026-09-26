@@ -20,6 +20,7 @@ A lightweight frontend RESTful CRUD library for standalone applications and prot
 - ⚡ **Async Operations**: All operations are asynchronous for better performance
 - 🔗 **Relational Queries**: Supports nested resources and relational data queries
 - 📝 **Batch Operations**: Supports batch CRUD operations
+- 🔀 **Multi-Tab Sync**: Re-read before write + BroadcastChannel, no data loss across browser tabs
 
 ## 📦 Installation
 
@@ -318,6 +319,24 @@ const comments = await store.get('posts/1/comments');
 console.log(comments); // Returns all comments with postId 1
 ```
 
+### Multi-Tab Sync
+
+When multiple browser tabs operate on the same data, the library automatically re-reads the storage before each write (preventing overwrites from other tabs) and notifies other tabs via BroadcastChannel. You can listen for external changes with `onChange`:
+
+```js
+const store = await JsLiteRest.create();
+
+// Triggered when another tab writes data, ideal for refreshing the UI
+const unsubscribe = store.onChange((info) => {
+  console.log('Data updated by another tab', info); // { source: 'external' }
+});
+
+// Call when you no longer need the listener
+unsubscribe();
+```
+
+In Node.js, the re-read before write also takes effect, preventing multiple processes from overwriting each other when writing to the same JSON file. See the [docs: Multi-Tab Sync](https://wll8.github.io/js-lite-rest/api/sync) for details.
+
 ## 🛠️ Development
 
 ### Requirements
@@ -350,9 +369,8 @@ pnpm docs:build
 ### Test Coverage
 
 The project includes a comprehensive test suite covering all environments and formats:
-- ✅ **121 functional tests**: Covering all CRUD operations, middleware, interceptors, etc.
-- ✅ **4 environment tests**: Node.js (CJS/ESM) + Browser (ESM/UMD)
-- ✅ **32 import tests**: Validating various use cases
+- ✅ **150+ functional tests**: Covering CRUD operations, query filters, batch operations, middleware, multi-tab sync, etc.
+- ✅ **4 environment tests**: Node.js (CJS/ESM) + Browser (ESM/UMD), with the UMD bundle verified in a JSDOM page context
 
 ### Tech Stack
 
