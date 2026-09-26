@@ -122,6 +122,8 @@ const updates = [
 const results = await store.put('users', updates);
 ```
 
+> **id 不可变**：PUT/PATCH 会忽略 body 中与目标记录不同的 `id`，记录 id 始终以路径（单条）或定位 id（批量）为准。批量更新时 body 的 `id` 仅用于定位记录。这保证表间关联引用（如 `userId`）不会因改名而静默断裂；确需变更身份时请"删旧建新"。
+
 ## PATCH - 部分更新
 
 ### 更新单条记录的部分字段

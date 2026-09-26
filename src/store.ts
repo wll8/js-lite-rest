@@ -1205,11 +1205,9 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
-        const oldId = arr[idx].id;
-        arr[idx] = { ...arr[idx], ...item };
+        // 修改以 body 定位 id 找到记录，但保留记录原 id（含类型表示），id 不可被修改
+        arr[idx] = { ...arr[idx], ...item, id: arr[idx].id };
         this.indexSet(segs[0], arr[idx]);
-        // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
-        if (String(oldId) !== String(arr[idx].id)) this.indexRefresh(segs[0], oldId);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1244,13 +1242,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray(cur)) throw new Error('只能对数组元素更新');
     const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
-    const oldId = cur[idx].id;
-    cur[idx] = { ...cur[idx], ...data };
+    // 修改忽略传入的 id：记录 id 以路径为准，避免关联引用（xxxId）静默断裂
+    cur[idx] = { ...cur[idx], ...data, id: cur[idx].id };
     // 嵌套数组不维护顶层表索引
     if (cur === this.data[segs[0]]) {
       this.indexSet(segs[0], cur[idx]);
-      // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
-      if (String(oldId) !== String(cur[idx].id)) this.indexRefresh(segs[0], oldId);
     }
     await this.persist();
     return cur[idx];
@@ -1341,11 +1337,9 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
-        const oldId = arr[idx].id;
-        arr[idx] = { ...arr[idx], ...item };
+        // 修改以 body 定位 id 找到记录，但保留记录原 id（含类型表示），id 不可被修改
+        arr[idx] = { ...arr[idx], ...item, id: arr[idx].id };
         this.indexSet(segs[0], arr[idx]);
-        // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
-        if (String(oldId) !== String(arr[idx].id)) this.indexRefresh(segs[0], oldId);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1380,13 +1374,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray(cur)) throw new Error('只能对数组元素 patch');
     const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
-    const oldId = cur[idx].id;
-    cur[idx] = { ...cur[idx], ...data };
+    // 修改忽略传入的 id：记录 id 以路径为准，避免关联引用（xxxId）静默断裂
+    cur[idx] = { ...cur[idx], ...data, id: cur[idx].id };
     // 嵌套数组不维护顶层表索引
     if (cur === this.data[segs[0]]) {
       this.indexSet(segs[0], cur[idx]);
-      // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
-      if (String(oldId) !== String(cur[idx].id)) this.indexRefresh(segs[0], oldId);
     }
     await this.persist();
     return cur[idx];
