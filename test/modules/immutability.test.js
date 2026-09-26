@@ -39,6 +39,15 @@ function fn({ JsLiteRest }) {
       const again = await store.kv.get('config');
       expect(again.theme).to.equal('light');
     });
+
+    it('含函数字段的数据 get 时不抛错，函数被清洗', async () => {
+      const store = await JsLiteRest.create({
+        books: [{ id: 1, title: 'a', hook: () => 'x' }],
+      });
+      const book = await store.get('books/1');
+      expect(book.title).to.equal('a');
+      expect(book.hook).to.equal(undefined);
+    });
   });
 }
 

@@ -148,6 +148,19 @@ export interface PaginationConfig {
   limit: number;
 }
 
+// 深拷贝：优先 structuredClone（快、无字符串中间态），
+// 含函数/Symbol 等不可克隆值或环境不支持时回落 JSON 方式（丢弃非常规值）
+function deepClone<T>(value: T): T {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // 回落到 JSON 方式
+    }
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
 function genId(): string {
   const currentId = getTimestampPlusId();
   // 追加 4 位 36 进制随机分量，避免跨进程同一毫秒内生成重复 ID
@@ -432,7 +445,7 @@ export class Store<T extends DataSchema = DataSchema> {
     const value = getDeepValue(this.opt.adapter!.data, key);
     if (value === undefined) return defaultValue;
     // 返回深拷贝，与 get 保持一致，避免修改返回值污染库数据
-    return JSON.parse(JSON.stringify(value));
+    return deepClone(value);
   }
 
   async _kvSet(key: string, value: any): Promise<any> {
@@ -740,7 +753,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
   async get(path: string, query?: any): Promise<any> {
     const result = await this.getRaw(path, query);
     if (result == null) return result;
-    return JSON.parse(JSON.stringify(result));
+    return deepClone(result);
   }
 
   async getRaw(path: string, query?: any): Promise<any> {
@@ -791,7 +804,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
       // 如果有 _expand 或 _embed 参数，创建数据副本以避免修改原始数据
       const needsDataCopy = _embed || _expand;
       if (needsDataCopy && filteredData) {
-        filteredData = JSON.parse(JSON.stringify(filteredData));
+        filteredData = deepClone(filteredData);
       }
       // 全文检索
       if (typeof filterQuery._q === 'string' && filterQuery._q.length > 0) {
