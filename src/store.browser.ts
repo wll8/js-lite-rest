@@ -36,7 +36,8 @@ async function create<T extends DataSchema = DataSchema>(
     channel.onmessage = (event) => {
       const msg = event.data;
       if (msg?.type === 'change' && msg.key === store.opt.savePath) {
-        store._syncFromExternal();
+        // 排空 flush 再次失败时避免未处理 rejection
+        store._syncFromExternal().catch(() => {});
       }
     };
   }

@@ -32,7 +32,7 @@ js-lite-rest 当前每次写操作 = 全量 `JSON.parse`（写前 reload）+ 全
 - 排空检查统一下沉到 `Store._enqueue` 的写任务包装层（`_request` 写路径与 `_kvSet/_kvDelete` 走同一包装，覆盖 kv 写）：任务成功收尾处检查——队列只剩自己且 `_dirty` → `await adapter.save()` 落盘一次并清脏标志；仍有排队任务 → 跳过
 - 任务失败时脏标志保持、由后续写任务的排空检查补落（失败请求的数据不保证落盘，与现状一致）
 - 落盘失败保持标志并照常 reject（下一个写任务的排空检查自然重试）
-- `_flushDirty` 只调 `adapter.save()`，自定义适配器同样获得合并
+- `_flushDirty` 只对支持 `flush` 的受管 JsonAdapter 生效；自定义适配器经 `_persistAdapter` 逐写直接 save，保持自身落盘语义、不参与合并
 - `_initialize` 的初始保存保持直接落盘（不在写队列中）
 - 404 路径（put/delete 未命中）不标脏、不落盘
 - 内存模式（无 load/save）：`save()` 为 no-op，标脏后落盘清标志，无害

@@ -212,6 +212,19 @@ function fn({ JsLiteRest, cleanStorageData }) {
         expect(books).to.have.lengthOf(1);
         expect(books[0].title).to.equal('外部写入');
       });
+
+      it('存在待落盘修改被跳过重读时不通知监听器', async () => {
+        const store = await JsLiteRest.create(TEST_KEY);
+        let notified = false;
+        store.onChange(() => { notified = true; });
+
+        // 模拟写任务进行中（内存已改、尚未落盘）的脏状态
+        store.opt.adapter._dirty = true;
+        const changed = await store._syncFromExternal();
+        // 修复前：重读被 _dirty 守卫跳过仍发空通知
+        expect(changed).to.equal(false);
+        expect(notified).to.equal(false);
+      });
     });
 
     describe('跨实例广播同步', () => {

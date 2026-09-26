@@ -77,7 +77,8 @@ export interface Adapter<T = any> {
   options?(path: string): Promise<any>;
   save(): Promise<void>;
   // 写操作前从存储重读最新数据，避免多标签页/多进程并发写入时丢失更新
-  reload?(): Promise<void>;
+  // 返回 false 表示未真实加载（如存在待落盘修改被跳过）；不返回或返回其他值视为已加载
+  reload?(): Promise<boolean | void>;
 }
 
 export interface KVApi {
@@ -466,7 +467,10 @@ export class Store<T extends DataSchema = DataSchema> {
     const adapter = this.opt.adapter as any;
     if (typeof adapter?.reload !== 'function') return false;
     // 重读进入写队列排队执行，避免打断进行中的写操作（如已修改内存但尚未保存）
-    await this._enqueue(() => adapter.reload());
+    // reload 返回 false 表示未真实加载（如存在待落盘修改被跳过），此时不通知监听器；
+    // 返回 undefined 的自定义适配器视为已加载，保持原有通知行为
+    const loaded = await this._enqueue(() => adapter.reload());
+    if (loaded === false) return false;
     const info = { source: 'external' };
     this._changeListeners.forEach((callback) => {
       try {
@@ -819,20 +823,26 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
   }
 
   // 写前重读：从存储加载最新数据替换内存副本，避免覆盖其他标签页/进程的修改
-  async reload(): Promise<void> {
+  // 返回是否真实加载：守卫跳过/加载失败返回 false；加载成功返回 true（含同引用缓存命中）
+  async reload(): Promise<boolean> {
     // 存在待落盘修改时跳过重读：此时存储落后于内存，重读会冲掉未保存的写入
-    if (this._dirty) return;
-    if (!this.opt.load || !this.opt.savePath) return;
+    if (this._dirty) return false;
+    if (!this.opt.load || !this.opt.savePath) return false;
     try {
       const latest = await this.opt.load(this.opt.savePath);
       if (latest != null && typeof latest === 'object') {
-        this.data = latest;
-        // 内存数据整体替换，已构建的 id 索引全部失效
-        this._idIndex.clear();
+        // 同引用（如 Node 指纹缓存命中）时索引仍然有效，无需清空重建
+        if (latest !== this.data) {
+          this.data = latest;
+          // 内存数据整体替换，已构建的 id 索引全部失效
+          this._idIndex.clear();
+        }
+        return true;
       }
     } catch {
       // 存储不可读时保留当前内存数据，不中断写操作
     }
+    return false;
   }
 
   parsePath(path: string): string[] {
@@ -1195,8 +1205,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
+        const oldId = arr[idx].id;
         arr[idx] = { ...arr[idx], ...item };
         this.indexSet(segs[0], arr[idx]);
+        // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
+        if (String(oldId) !== String(arr[idx].id)) this.indexRefresh(segs[0], oldId);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1231,9 +1244,14 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray(cur)) throw new Error('只能对数组元素更新');
     const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
+    const oldId = cur[idx].id;
     cur[idx] = { ...cur[idx], ...data };
     // 嵌套数组不维护顶层表索引
-    if (cur === this.data[segs[0]]) this.indexSet(segs[0], cur[idx]);
+    if (cur === this.data[segs[0]]) {
+      this.indexSet(segs[0], cur[idx]);
+      // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
+      if (String(oldId) !== String(cur[idx].id)) this.indexRefresh(segs[0], oldId);
+    }
     await this.persist();
     return cur[idx];
   }
@@ -1323,8 +1341,11 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
           hasErrors = true;
           continue;
         }
+        const oldId = arr[idx].id;
         arr[idx] = { ...arr[idx], ...item };
         this.indexSet(segs[0], arr[idx]);
+        // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
+        if (String(oldId) !== String(arr[idx].id)) this.indexRefresh(segs[0], oldId);
         results.push(arr[idx]);
         errors.push(null);
       }
@@ -1359,9 +1380,14 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray(cur)) throw new Error('只能对数组元素 patch');
     const idx = this.findIndexById(segs[0], cur, key);
     if (idx === -1) return null;
+    const oldId = cur[idx].id;
     cur[idx] = { ...cur[idx], ...data };
     // 嵌套数组不维护顶层表索引
-    if (cur === this.data[segs[0]]) this.indexSet(segs[0], cur[idx]);
+    if (cur === this.data[segs[0]]) {
+      this.indexSet(segs[0], cur[idx]);
+      // 换 id 后刷新旧键：避免旧 id 仍指向被顶替对象（同 id 重复记录取第一个）
+      if (String(oldId) !== String(cur[idx].id)) this.indexRefresh(segs[0], oldId);
+    }
     await this.persist();
     return cur[idx];
   }

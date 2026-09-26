@@ -56,6 +56,23 @@ function fn({ JsLiteRest, cleanStorageData }) {
       expect(stored.books).to.have.lengthOf(total - 1);
     });
 
+    it('put 换 id 后旧 id 不再命中幽灵索引键', async () => {
+      const store = await JsLiteRest.create(
+        { books: [{ id: 1, title: 'a' }] },
+        { savePath: TEST_KEY, overwrite: true }
+      );
+      // 先读一次建索引（惰性构建），换 id 才会产生幽灵旧键
+      expect((await store.get('books/1')).title).to.equal('a');
+      // put body 携带新 id，把记录改名
+      await store.put('books/1', { id: 999 });
+      // lite 拦截器下未命中为 404 错误响应（throw），捕获后断言空数据
+      // 修复前：旧 id 键仍指向被顶替对象，读旧 id 返回改名后的记录
+      const missOld = await store.get('books/1').catch(err => err);
+      expect(missOld.data).to.equal(null);
+      // 新 id 可读
+      expect((await store.get('books/999')).title).to.equal('a');
+    });
+
     it('重复 id 的记录取第一个（与 findIndex 语义一致）', async () => {
       // 原始 Store 类内存模式，注入重复 id 数据
       const raw = await JsLiteRest.Store.create(

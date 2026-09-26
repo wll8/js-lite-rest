@@ -127,6 +127,8 @@ const store = await JsLiteRest.create('./data/db.json', {
 
 自定义适配器实例。当提供自定义适配器时，将使用它来处理所有数据操作。
 
+> 注意：自定义适配器不应定义 `persist` / `flush` 方法——这两个名称被库内部用于持久化调度（受管 JsonAdapter 的标脏 / 排空落盘），撞名会静默改变落盘行为。
+
 
 ## 返回值
 
