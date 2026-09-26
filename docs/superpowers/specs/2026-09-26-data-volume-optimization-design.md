@@ -45,6 +45,7 @@ js-lite-rest 当前每次写操作 = 全量 `JSON.parse`（写前 reload）+ 全
 - 增量维护：post push 后 `set`；put/patch 替换后 `set` 新引用；delete splice 后 `delete`——批量循环内增量更新，不反复重建
 - 重复 id 保持「取第一个」，与现有 `findIndex` 语义一致；键统一 `String(id)`，兼容 `1` 与 `'1'`
 - 只覆盖顶层表（`info.getTables()` 认可的顶层数组）；`books[1].comments` 等嵌套路径的按 id 查找保持线性扫描
+- 性能修正：按 id 读为 O(1)；put/patch/delete 因数组保序需 `indexOf` 引用反查位置，为常数级优化（引用比较快于逐条 String 转换），非严格 O(1)
 
 ### ④ mtime 跳过 reload（仅 Node 端）
 

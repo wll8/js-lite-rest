@@ -107,6 +107,20 @@ const store = await JsLiteRest.create({ users: [] }, {
 });
 ```
 
+### indent
+
+Node.js 环境下 JSON 文件的序列化缩进。默认紧凑格式（体积更小）；设置为正整数可恢复缩进，便于手工阅读与 diff。
+
+``` js
+const store = await JsLiteRest.create('./data/db.json', {
+  indent: 2, // 落盘文件带 2 空格缩进
+})
+```
+
+> 浏览器端（localforage）存储的是对象本身，此选项不生效。
+>
+> 并发说明：同一事件循环内的多次并发写（如 `Promise.all` 批量导入）会合并为一次落盘；批次全部完成后数据必定已写入存储，批次中单个写请求返回时可能尚未落盘（毫秒级窗口）。串行写每次都立即落盘。
+
 ### adapter
 
 **类型**: `Adapter`
