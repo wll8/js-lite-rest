@@ -263,6 +263,8 @@ export class Store<T extends DataSchema = DataSchema> {
   private _changeListeners: Array<(info?: { source: string }) => void>;
   // 实例级写队列：串行化所有写操作，避免并发写交错导致丢失更新
   private _writeQueue: Promise<void>;
+  // 写队列排队计数：任务收尾时为 1 表示队列即将排空，执行统一落盘
+  private _pendingCount = 0;
 
   // HTTP 方法的类型声明
   get!: (path?: string, query?: QueryParams) => Promise<any>;
@@ -349,6 +351,11 @@ export class Store<T extends DataSchema = DataSchema> {
     await Promise.resolve();
     this.opt.adapter = this.opt.adapter || new JsonAdapter<T>(finalData as T, this.opt);
 
+    // 写队列接管持久化时机：由排空时统一 flush，并发批量写合并为一次落盘
+    if (this.opt.adapter instanceof JsonAdapter) {
+      this.opt.adapter._autoPersist = false;
+    }
+
     // 如果传入的是数据对象且有 save 函数，进行初始保存
     if (shouldSaveInitialData && this.opt.save && this.opt.savePath) {
       await this.opt.adapter.save();
@@ -369,10 +376,45 @@ export class Store<T extends DataSchema = DataSchema> {
   // 保证"重读→修改→保存"全程不被其他写操作或外部同步打断。
   // 注意：任务内不要调用本实例的其他写方法（会排队等待自身，造成死锁）。
   private _enqueue<R>(task: () => Promise<R>): Promise<R> {
-    const run = this._writeQueue.then(task);
+    this._pendingCount++;
+    const run = this._writeQueue.then(async () => {
+      try {
+        const result = await task();
+        // 队列排空时统一落盘：同一事件循环内的并发写合并为一次 I/O
+        if (this._pendingCount === 1) {
+          await this._flushDirty();
+        }
+        return result;
+      } catch (error) {
+        // 任务失败也检查排空：拒尾任务不能搁浅同批已成功请求的落盘
+        if (this._pendingCount === 1) {
+          await this._flushDirty().catch(() => {});
+        }
+        throw error;
+      } finally {
+        this._pendingCount--;
+      }
+    });
     // 队尾只追踪完成状态：前序任务失败不阻塞后续任务
     this._writeQueue = run.then(() => undefined, () => undefined);
     return run;
+  }
+
+  // 将待落盘修改写入存储：仅在适配器支持 flush（受管 JsonAdapter）时生效
+  private async _flushDirty(): Promise<void> {
+    const adapter = this.opt.adapter as any;
+    if (typeof adapter?.flush !== 'function') return;
+    await adapter.flush();
+  }
+
+  // 请求适配器持久化：受管 JsonAdapter 仅标脏，其他适配器直接 save
+  private async _persistAdapter(): Promise<void> {
+    const adapter: any = this.opt.adapter;
+    if (typeof adapter?.persist === 'function') {
+      await adapter.persist();
+    } else {
+      await adapter?.save();
+    }
   }
 
   // 合并数据的辅助方法：existing 数据优先，新数据中不存在的 key 才会被添加
@@ -468,7 +510,7 @@ export class Store<T extends DataSchema = DataSchema> {
       };
 
       setDeepValue(this.opt.adapter!.data, key, value);
-      await this.opt.adapter!.save();
+      await this._persistAdapter();
       return value;
     });
   }
@@ -492,7 +534,7 @@ export class Store<T extends DataSchema = DataSchema> {
       };
 
       const deleted = deleteDeepValue(this.opt.adapter!.data, key);
-      await this.opt.adapter!.save();
+      await this._persistAdapter();
       return deleted;
     });
   }
@@ -671,6 +713,10 @@ export class Store<T extends DataSchema = DataSchema> {
 export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T> {
   opt: StoreOptions;
   data: T;
+  // 待落盘标志与自动落盘开关：独立使用 JsonAdapter 时直接落盘；
+  // 经 Store 创建后由写队列接管持久化时机（排空时统一 flush）
+  _dirty = false;
+  _autoPersist = true;
 
   constructor(data: T = {} as T, opt: StoreOptions = {}) {
     this.opt = opt;
@@ -687,8 +733,32 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     }
   }
 
+  // 写方法内的持久化入口：自动模式直接落盘（独立使用 JsonAdapter），受管模式仅标脏
+  async persist(): Promise<void> {
+    if (this._autoPersist) {
+      await this.save();
+      return;
+    }
+    this._dirty = true;
+  }
+
+  // Store 在写队列排空时调用：有待落盘修改才真正落盘
+  async flush(): Promise<void> {
+    if (!this._dirty) return;
+    this._dirty = false;
+    try {
+      await this.save();
+    } catch (error) {
+      // 落盘失败恢复标志，由后续写任务的排空检查重试
+      this._dirty = true;
+      throw error;
+    }
+  }
+
   // 写前重读：从存储加载最新数据替换内存副本，避免覆盖其他标签页/进程的修改
   async reload(): Promise<void> {
+    // 存在待落盘修改时跳过重读：此时存储落后于内存，重读会冲掉未保存的写入
+    if (this._dirty) return;
     if (!this.opt.load || !this.opt.savePath) return;
     try {
       const latest = await this.opt.load(this.opt.savePath);
@@ -979,7 +1049,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
         }
       }
 
-      await this.save();
+      await this.persist();
 
       // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
@@ -997,7 +1067,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
       const arr = this.data[childTable];
       newData.id = genId();
       arr.push(newData);
-      await this.save();
+      await this.persist();
       return newData;
     }
     let cur = this.data;
@@ -1022,7 +1092,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     if (!Array.isArray((cur as any)[key])) throw new Error('只能向数组添加');
     data.id = genId();
     cur[key].push(data);
-    await this.save();
+    await this.persist();
     return data;
   }
 
@@ -1055,7 +1125,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
         errors.push(null);
       }
 
-      await this.save();
+      await this.persist();
 
       // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
@@ -1086,7 +1156,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
-    await this.save();
+    await this.persist();
     return cur[idx];
   }
 
@@ -1113,7 +1183,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
         errors.push(null);
       }
 
-      await this.save();
+      await this.persist();
 
       // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
@@ -1144,7 +1214,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     const del = cur.splice(idx, 1)[0];
-    await this.save();
+    await this.persist();
     return del;
   }
 
@@ -1177,7 +1247,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
         errors.push(null);
       }
 
-      await this.save();
+      await this.persist();
 
       // JsonAdapter 批量操作返回 {data, error}
       if (hasErrors) {
@@ -1208,7 +1278,7 @@ export class JsonAdapter<T extends DataSchema = DataSchema> implements Adapter<T
     const idx = cur.findIndex((item: any) => String(item.id) === key);
     if (idx === -1) return null;
     cur[idx] = { ...cur[idx], ...data };
-    await this.save();
+    await this.persist();
     return cur[idx];
   }
 }

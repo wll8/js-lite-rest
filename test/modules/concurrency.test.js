@@ -33,6 +33,20 @@ function fn({ JsLiteRest, cleanStorageData }) {
     });
   }
 
+  // 带落盘计数的自定义 save（供落盘次数断言使用）
+  function createWithCountingSave(savePath, onSave) {
+    return JsLiteRest.create(savePath, {
+      save: async (key, data) => {
+        onSave();
+        if (isNodeEnv) {
+          await fs.promises.writeFile(key, JSON.stringify(data), 'utf-8');
+        } else {
+          await JsLiteRest.lib.localforage.setItem(key, data);
+        }
+      },
+    });
+  }
+
   describe('并发与高频写入', function () {
     this.timeout(10000);
 
@@ -150,6 +164,71 @@ function fn({ JsLiteRest, cleanStorageData }) {
 
       const stored = await readStored(TEST_KEY);
       expect(stored.counter).to.equal(3);
+    });
+
+    it('并发批量写合并为一次落盘', async () => {
+      let saveCount = 0;
+      const store = await createWithCountingSave(TEST_KEY, () => saveCount++);
+      const total = 50;
+      await Promise.all(
+        Array.from({ length: total }, (_, i) => store.post('users', { name: `u-${i}` }))
+      );
+      expect(saveCount).to.equal(1);
+      const stored = await readStored(TEST_KEY);
+      expect(stored.users).to.have.lengthOf(total);
+    });
+
+    it('串行单发写每笔落盘一次且 await 返回时已落盘', async () => {
+      let saveCount = 0;
+      const store = await createWithCountingSave(TEST_KEY, () => saveCount++);
+      await store.post('users', { name: 'a' });
+      await store.post('users', { name: 'b' });
+      expect(saveCount).to.equal(2);
+      const stored = await readStored(TEST_KEY);
+      expect(stored.users.map(u => u.name)).to.deep.equal(['a', 'b']);
+    });
+
+    it('落盘失败后由后续写任务补落', async () => {
+      let failFirst = true;
+      const store = await JsLiteRest.create(TEST_KEY, {
+        save: async (key, data) => {
+          if (failFirst) {
+            failFirst = false;
+            throw new Error('落盘失败');
+          }
+          if (isNodeEnv) {
+            await fs.promises.writeFile(key, JSON.stringify(data), 'utf-8');
+          } else {
+            await JsLiteRest.lib.localforage.setItem(key, data);
+          }
+        },
+      });
+      await expect(store.post('users', { name: 'a' })).to.be.rejected;
+      await store.post('users', { name: 'b' });
+      const stored = await readStored(TEST_KEY);
+      expect(stored.users.map(u => u.name)).to.include('b');
+    });
+
+    it('批量部分成功（207）时成功项仍落盘', async () => {
+      let saveCount = 0;
+      const store = await createWithCountingSave(TEST_KEY, () => saveCount++);
+      await store.post('books', { title: 'old' });
+      // 批量 post 含非法项（指定 id）：合法项已入内存，整体以 207 拒绝
+      await expect(store.post('books', [{ title: 'ok' }, { id: 'x', title: 'bad' }])).to.be.rejected;
+      const stored = await readStored(TEST_KEY);
+      expect(stored.books.map(b => b.title)).to.include('ok');
+    });
+
+    it('批内拒尾任务不搁浅前序成功写的落盘', async () => {
+      const store = await JsLiteRest.create(TEST_KEY);
+      await store.kv.set('obj', {});
+      // post 成功、put 到非数组必然 reject：拒尾任务也需触发排空落盘
+      await Promise.all([
+        store.post('users', { name: 'good' }),
+        store.put('obj/1', { v: 1 }).catch(() => 'rejected'),
+      ]);
+      const stored = await readStored(TEST_KEY);
+      expect(stored.users.map(u => u.name)).to.include('good');
     });
   });
 }
