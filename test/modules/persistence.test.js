@@ -43,6 +43,22 @@ function fn({ JsLiteRest, cleanStorageData }) {
         expect(fileContent.book[0].title).to.equal('html');
       }
     });
+
+    it('Node 默认落盘为紧凑 JSON，indent 选项恢复缩进', async function () {
+      if (!isNodeEnv) this.skip();
+
+      const compactStore = await JsLiteRest.create('test-indent-compact.json');
+      await compactStore.post('book', { title: 'js' });
+      const compactContent = fs.readFileSync('test-indent-compact.json', 'utf-8');
+      expect(compactContent).to.equal(JSON.stringify(JSON.parse(compactContent)));
+      await cleanStorageData('test-indent-compact.json');
+
+      const prettyStore = await JsLiteRest.create('test-indent-pretty.json', { indent: 2 });
+      await prettyStore.post('book', { title: 'css' });
+      const prettyContent = fs.readFileSync('test-indent-pretty.json', 'utf-8');
+      expect(prettyContent).to.equal(JSON.stringify(JSON.parse(prettyContent), null, 2));
+      await cleanStorageData('test-indent-pretty.json');
+    });
   });
 
   describe('本地存储持久化', () => {

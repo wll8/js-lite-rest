@@ -10,16 +10,18 @@ async function load(key: string): Promise<any> {
   return JSON.parse(content);
 }
 
-async function save(key: string, data: any): Promise<void> {
-  await fs.writeFile(key, JSON.stringify(data, null, 2), 'utf-8');
-}
-
 // 创建函数
 async function create<T extends DataSchema = DataSchema>(
   data: T | string = {} as T,
   opt: Partial<StoreOptions> = {}
 ): Promise<Store<T>> {
-  const mergedOpt = { load, save, ...opt };
+  // 序列化缩进：默认紧凑，indent 为正数时启用
+  const indent = typeof opt.indent === 'number' && opt.indent > 0 ? opt.indent : undefined;
+  const mergedOpt = {
+    load,
+    save: (key: string, d: any) => fs.writeFile(key, JSON.stringify(d, null, indent), 'utf-8'),
+    ...opt,
+  };
   // 暂以 any 兼容 Store.create 现有签名；稍后将把 Store.create 的 data 参数改为 T | string
   const store = await Store.create<T>(data as any, mergedOpt);
   store.use(interceptor.lite);

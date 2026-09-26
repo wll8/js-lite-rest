@@ -59,6 +59,8 @@ export interface StoreOptions {
   idKeySuffix?: string;
   savePath?: string;
   overwrite?: boolean;
+  // Node 文件序列化缩进：默认紧凑；设置正数（如 2）恢复缩进格式
+  indent?: number;
   load?: (key: string) => Promise<any>;
   save?: (key: string, data: any) => Promise<void>;
   adapter?: Adapter;
